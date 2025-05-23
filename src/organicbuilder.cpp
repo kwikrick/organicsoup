@@ -34,6 +34,7 @@ public:
         const int width = 1600, height = 900;
         
         SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_RESIZABLE, &window, &renderer);
+        SDL_SetWindowTitle(window, "Organic Builder");
   
         imgui_setup();
 
@@ -203,12 +204,13 @@ private:
         // ImGui::ShowDemoWindow(); // Show demo window! :)
 
         // Creates a new window.
-        if (ImGui::Begin("Test Window"))
-        {
+        if (ImGui::Begin("Organic Builder")) {
+           
             if (ImGui::Button("Restart")) {
                 restart();
             }
             ImGui::SameLine();
+            ImGui::SetNextItemWidth(100);
             ImGui::SliderInt("starting atoms", &num_start_atoms, 0, 2000);
             
             ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
