@@ -1,2 +1,4 @@
 # ignore the following
-build
+build_web
+build_linux
+imgui.ini
