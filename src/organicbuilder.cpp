@@ -13,12 +13,14 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <chrono>
 
 // my includes
 #include "atom.h"
 #include "atomrenderer.h"
 #include "bond.h"
 #include "rule.h"
+#include "spacemap.h"
 
 // Dear ImGui
 #include "imgui.h"
@@ -29,58 +31,86 @@
 class Application {
 public:
     Application() {
-     
-        SDL_CreateWindowAndRenderer(1600, 900, SDL_WINDOW_RESIZABLE, &window, &renderer);
-
+        const int width = 1600, height = 900;
+        
+        SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_RESIZABLE, &window, &renderer);
+  
         imgui_setup();
 
         atom_renderer = std::make_unique<AtomRenderer>(*renderer);
-        
-        int width, height;
-        SDL_GetWindowSize(window, &width,&height);
+        spacemap = std::make_unique<SpaceMap>(width,height, bonding_radius, bonding_radius);
 
-        // rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 1));
-        // rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 1));
-        // rules.push_back(std::make_unique<Rule>('c', 0, false, 'd', 0, 1, true, 1));
-        // rules.push_back(std::make_unique<Rule>('d', 0, false, 'e', 0, 1, true, 1));
-        // rules.push_back(std::make_unique<Rule>('e', 0, false, 'f', 0, 1, true, 1));
+        rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 0));
+        rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 0));
+        rules.push_back(std::make_unique<Rule>('c', 0, false, 'd', 0, 1, true, 0));
+        rules.push_back(std::make_unique<Rule>('d', 0, false, 'e', 0, 1, true, 0));
+        rules.push_back(std::make_unique<Rule>('e', 0, false, 'f', 0, 1, true, 0));
          
         restart();
 
     }
                
     void update() {
+
+        auto clock_start = std::chrono::high_resolution_clock::now();
+
         int width, height;
         SDL_GetWindowSize(window, &width,&height);
 
-        //TODO: expensive pairwise search
-        for (int i=0;i<atoms.size();++i) {
-            for (int j=i+1;j<atoms.size();++j) {
-                auto& atom1 = atoms[i];
-                auto& atom2 = atoms[j];
-                auto dist = sqrt(pow(atom1->x-atom2->x,2) + pow(atom1->y-atom2->y,2));
-                if (dist < bonding_radius) {
-                     for (auto& rule: rules) {
-                        if (match_rule(*rule, atom1, atom2)) {
-                            apply_rule(*rule, atom1, atom2);
-                        }
-                        if (match_rule(*rule, atom2, atom1)) {
-                            apply_rule(*rule, atom2, atom1);
-                        }
+        debug_num_pairs_tested = 0;
+        debug_num_rules_tested = 0;
+        debug_num_rules_applied = 0;
+
+        auto pairs = spacemap->get_pairs(bonding_radius);
+        for (auto& pair: pairs) {
+            debug_num_pairs_tested++;
+            auto& atom1 = pair.first;
+            auto& atom2 = pair.second;
+            float dx = atom1->x - atom2->x;
+            float dy = atom1->y - atom2->y;
+            float d2 = dx * dx + dy * dy;
+            if (d2 < bonding_radius*bonding_radius) {
+                for (auto& rule: rules) {
+                    debug_num_rules_tested ++;
+                    if (match_rule(*rule, atom1, atom2)) {
+                        apply_rule(*rule, atom1, atom2);
+                        debug_num_rules_applied++;
+                    
+                    }
+                    if (match_rule(*rule, atom2, atom1)) {
+                        apply_rule(*rule, atom2, atom1);
+                        debug_num_rules_applied++;
                     }
                 }
             }
         }
+
+        // collide
+        for (auto& pair: pairs) {
+            auto& atom1 = pair.first;
+            auto& atom2 = pair.second;
+            atom1->collide(*atom2);
+        }
+
         for (auto& bond: bonds) {
             bond->update();
         }
         for (auto& atom: atoms) {
+            float old_x = atom->x;
+            float old_y = atom->y;
             atom->update(width,height);
+            spacemap->update_atom(atom, old_x, old_y);
         }
+
+        auto clock_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> duration = clock_end - clock_start;
+        debug_update_duration = duration.count();
     }
 
     void draw() {
     
+        auto clock_start = std::chrono::high_resolution_clock::now();
+
         SDL_SetRenderDrawColor(renderer, 0,0,0,255);
         SDL_RenderClear(renderer);
         
@@ -98,6 +128,18 @@ public:
         SDL_RenderPresent(renderer);
         
         imgui_render_frame();
+
+        auto clock_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> duration = clock_end - clock_start;
+        debug_draw_duration = duration.count();
+
+        std::chrono::duration<float> frame_duration = clock_start- last_frame_clock;
+        float frame_time = frame_duration.count(); 
+        float fps = 1.0f / frame_time;
+        debug_average_fps = debug_average_fps * 0.9f + fps * 0.1f;
+        
+        last_frame_clock = clock_start;
+
         
     }
     
@@ -166,6 +208,9 @@ private:
             if (ImGui::Button("Restart")) {
                 restart();
             }
+            ImGui::SameLine();
+            ImGui::SliderInt("starting atoms", &num_start_atoms, 0, 2000);
+            
             ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
             ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
             ImGui::SeparatorText("Rules");
@@ -175,7 +220,14 @@ private:
 
                 const char* atom_type_items[] = { "a","b","c","d","e","f"};
                 const char* atom_state_items[] = { "0","1","2","3","4","5","6","7","8","9"}; 
-
+                // delete button
+                if (ImGui::Button("X")) {
+                    rules.erase(std::remove(rules.begin(), rules.end(), rule), rules.end());
+                    ImGui::PopID();
+                    ImGui::PopItemWidth();
+                    break;
+                }
+                ImGui::SameLine();
                 // atom 1 type
                 {
                     static int current_item_atom1 = 0;
@@ -239,6 +291,7 @@ private:
                     ImGui::Combo("##after2", &current_item_after_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
                     rule->after_state2 = current_item_after_state_2;
                 }
+               
                 ImGui::PopItemWidth();
                 ImGui::PopID();
             }
@@ -246,6 +299,14 @@ private:
         if (ImGui::Button("Add Rule")) {
             add_rule();
         }
+        ImGui::SeparatorText("Debug");
+        ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
+        ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
+        ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
+        ImGui::LabelText("Update duration", "%f", debug_update_duration);
+        ImGui::LabelText("Draw duration", "%f", debug_draw_duration);
+        ImGui::LabelText("Average FPS", "%f", debug_average_fps);
+        
         ImGui::End();
     }
 
@@ -257,7 +318,9 @@ private:
     void restart() {
         atoms.clear();
         bonds.clear();
-        for (int i=0;i<100;++i) {
+        spacemap->clear();
+        // create random atoms
+        for (int i=0;i<num_start_atoms;++i) {
             int x=rand()%1600;
             int y=rand()%900;
             char type = 'a' + rand()%6;
@@ -269,16 +332,28 @@ private:
     void add_rule() {
         rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 0, true, 0));
     }
+
     // ----- variables ------
     const float bonding_radius = 50;
 
-    SDL_Window* window;
-    SDL_Renderer* renderer;
+    int num_start_atoms = 100;
+
+    SDL_Window* window = nullptr;
+    SDL_Renderer* renderer = nullptr;
+
+    std::unique_ptr<SpaceMap> spacemap;
     std::unique_ptr<AtomRenderer> atom_renderer;
     std::vector<std::shared_ptr<Atom>> atoms;
     std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
-    
+
+    int debug_num_pairs_tested = 0;
+    int debug_num_rules_tested = 0;
+    int debug_num_rules_applied = 0;
+    float debug_draw_duration = 0;
+    float debug_update_duration = 0;
+    float debug_average_fps = 0;
+    std::chrono::time_point<std::chrono::high_resolution_clock> last_frame_clock;
 };
 
 
