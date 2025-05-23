@@ -1,9 +1,9 @@
-# super-simple automaitc Makefile from:
+# super-simple automatic Makefile, based on:
 #  https://spin.atomicobject.com/2016/08/26/makefile-c-projects/
 
 TARGET_EXEC ?= index.html
 
-BUILD_DIR ?= ./build
+BUILD_DIR ?= ./build_web
 SRC_DIRS ?= ./src ./include ./imgui
 EXTRA_SRCS ?= ./imgui/backends/imgui_impl_sdl2.cpp ./imgui/backends/imgui_impl_opengl3.cpp
 
@@ -11,10 +11,8 @@ CC = emcc
 CXX = em++
 
 EMFLAGS=-sUSE_SDL=2 -sUSE_SDL_TTF=2
-CXXFLAGS= $(EMFLAGS) -std=c++20
+CXXFLAGS= $(EMFLAGS) -std=c++20 -DWEBAPP
 LDFLAGS=$(EMFLAGS) --embed-file assets
-
-# --- unmodified
 
 SRCS := $(shell find $(SRC_DIRS) -maxdepth 1 -name *.cpp -or -name *.c -or -name *.s) $(EXTRA_SRCS)
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
@@ -47,8 +45,8 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 .PHONY: clean
 
 clean:
-	$(RM) -r $(BUILD_DIR)
-
+	$(RM) -r $(BUILD_DIR) 
+	
 -include $(DEPS)
 
 MKDIR_P ?= mkdir -p

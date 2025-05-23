@@ -2,9 +2,8 @@
 // by kwikrick
 
 // runs as a web-app (cpp -> html+js+wasm)
+// #define WEBAPP
 
-// C includes
-#include <emscripten/emscripten.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
@@ -50,6 +49,20 @@ public:
         restart();
 
     }
+
+    void handle_events() {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                quit = true;
+            }
+            ImGui_ImplSDL2_ProcessEvent(&event); 
+        }
+    }
+
+    bool quit_requested() const {
+        return quit;
+    }
                
     void update() {
 
@@ -67,21 +80,16 @@ public:
             debug_num_pairs_tested++;
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
-            float dx = atom1->x - atom2->x;
-            float dy = atom1->y - atom2->y;
-            float d2 = dx * dx + dy * dy;
-            if (d2 < bonding_radius*bonding_radius) {
-                for (auto& rule: rules) {
-                    debug_num_rules_tested ++;
-                    if (match_rule(*rule, atom1, atom2)) {
-                        apply_rule(*rule, atom1, atom2);
-                        debug_num_rules_applied++;
-                    
-                    }
-                    if (match_rule(*rule, atom2, atom1)) {
-                        apply_rule(*rule, atom2, atom1);
-                        debug_num_rules_applied++;
-                    }
+            for (auto& rule: rules) {
+                debug_num_rules_tested ++;
+                if (match_rule(*rule, atom1, atom2)) {
+                    apply_rule(*rule, atom1, atom2);
+                    debug_num_rules_applied++;
+                
+                }
+                else if (match_rule(*rule, atom2, atom1)) {
+                    apply_rule(*rule, atom2, atom1);
+                    debug_num_rules_applied++;
                 }
             }
         }
@@ -163,7 +171,7 @@ private:
     {
         atom1->state = rule.after_state1;
         atom2->state = rule.after_state2;
-        auto bonds_it = std::remove_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
+        auto bonds_it = std::find_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
             return (bond->atom1 == atom1 && bond->atom2 == atom2) 
                 || (bond->atom1 == atom2 && bond->atom2 == atom1);
         });
@@ -191,12 +199,7 @@ private:
     }
 
     void imgui_start_frame() {
-        // Forward event to imGui backend
-        // TODO: should this be a loop? And also do my own event processing?
-        SDL_Event event;
-        SDL_PollEvent(&event);
-        ImGui_ImplSDL2_ProcessEvent(&event); 
-
+        
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
@@ -305,8 +308,8 @@ private:
         ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
         ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
         ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
-        ImGui::LabelText("Update duration", "%f", debug_update_duration);
-        ImGui::LabelText("Draw duration", "%f", debug_draw_duration);
+        ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
+        ImGui::LabelText("Draw duration (ms)", "%f", debug_draw_duration * 1000);
         ImGui::LabelText("Average FPS", "%f", debug_average_fps);
         
         ImGui::End();
@@ -315,6 +318,9 @@ private:
     void imgui_render_frame() {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        #ifndef WEBAPP
+            SDL_GL_SwapWindow(window);      // needed in Native, not in webApp
+        #endif
     }
     
     void restart() {
@@ -340,6 +346,8 @@ private:
 
     int num_start_atoms = 100;
 
+    bool quit = false;
+
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
 
@@ -358,10 +366,13 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> last_frame_clock;
 };
 
+#ifdef WEBAPP
+#include <emscripten/emscripten.h>
 
 // global update function 
 void update(void* app_ptr) {        // ugly void* is only was Emscripten will pass arguments
     Application* application = static_cast<Application*>(app_ptr);
+    application->handle_events();
     application->update();
     application->draw();
 }
@@ -387,6 +398,29 @@ int main(int argc, char* argv[]) {
     SDL_Quit();
 
 }
+#else
+int main(int argc, char* argv[]) {
+    
+    SDL_Init(SDL_INIT_VIDEO);
+    TTF_Init();
+
+    Application app;
+   
+    while(!app.quit_requested()) {
+        app.handle_events();
+        app.update();
+        app.draw();
+        SDL_Delay(16); // ~60 fps
+    }
+   
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+    
+    TTF_Quit();
+    SDL_Quit();
+}
+#endif
  
 
 
