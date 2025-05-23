@@ -4,7 +4,8 @@
 TARGET_EXEC ?= index.html
 
 BUILD_DIR ?= ./build
-SRC_DIRS ?= ./src ./include
+SRC_DIRS ?= ./src ./include ./imgui
+EXTRA_SRCS ?= ./imgui/backends/imgui_impl_sdl2.cpp ./imgui/backends/imgui_impl_opengl3.cpp
 
 CC = emcc
 CXX = em++
@@ -15,7 +16,7 @@ LDFLAGS=$(EMFLAGS) --embed-file assets
 
 # --- unmodified
 
-SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
+SRCS := $(shell find $(SRC_DIRS) -maxdepth 1 -name *.cpp -or -name *.c -or -name *.s) $(EXTRA_SRCS)
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 

@@ -20,12 +20,20 @@
 #include "link.h"
 #include "rule.h"
 
+// Dear ImGui
+#include "imgui.h"
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_opengl3.h"
+
+
 class Application {
 public:
     Application() {
      
         SDL_CreateWindowAndRenderer(1600, 900, SDL_WINDOW_RESIZABLE, &window, &renderer);
-        
+
+        setup_imgui();
+
         atom_renderer = std::make_unique<AtomRenderer>(*renderer);
         
         int width, height;
@@ -83,6 +91,31 @@ public:
         }
     }
 
+    void draw() {
+    
+        SDL_SetRenderDrawColor(renderer, 0,0,0,255);
+        SDL_RenderClear(renderer);
+        
+        imgui_start_frame();
+    
+        for (auto& atom: atoms) {
+                atom_renderer->draw(*atom);
+        }
+
+        SDL_SetRenderDrawColor(renderer, 255,55,255,255);
+        for (auto& link: links) {
+                link->draw(*renderer);
+        }
+
+        SDL_RenderPresent(renderer);
+        
+        imgui_render_frame();
+
+        SDL_GL_SwapWindow(window);
+        
+    }
+    
+private:
     bool try_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2) {
 
         if (rule.match(*atom1, *atom2)) {
@@ -102,25 +135,42 @@ public:
         return false;
     }
     
-    void draw() {
-        SDL_SetRenderDrawColor(renderer, 0,0,0,255);
-        SDL_RenderClear(renderer);
-        //SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        
-        
-        for (auto& atom: atoms) {
-                atom_renderer->draw(*atom);
-        }
+    void setup_imgui() {
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
+        //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
+        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport / Platform Windows
 
-        SDL_SetRenderDrawColor(renderer, 255,55,255,255);
-        for (auto& link: links) {
-                link->draw(*renderer);
-        }
-        
-        SDL_RenderPresent(renderer);
+        ImGui_ImplOpenGL3_Init("#version 100");
+        ImGui_ImplSDL2_InitForOpenGL(window, SDL_GL_GetCurrentContext());
+
+    }
+
+    void imgui_start_frame() {
+        // (Where your code calls SDL_PollEvent())
+        SDL_Event event;
+        SDL_PollEvent(&event);
+        ImGui_ImplSDL2_ProcessEvent(&event); // Forward your event to backend
+
+        // (After event loop)
+        // Start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow(); // Show demo window! :)
+    }
+
+    void imgui_render_frame() {
+        // Rendering
+        // (Your code clears your framebuffer, renders your other stuff etc.)
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        // (Your code calls SDL_GL_SwapWindow() etc.)
     }
        
-private:
+    // ----- variables ------
     const float bonding_radius = 50;
 
     SDL_Window* window;
@@ -150,8 +200,16 @@ int main(int argc, char* argv[]) {
     emscripten_set_main_loop_arg(update, &app, 
         -1, // fps=-1 recommended, determined by browser.
         1   // simulate infinite loop, this call will not return
-    );         
+    );
    
+    // never reached?
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+    
+    TTF_Quit();
+    SDL_Quit();
+
 }
  
 

@@ -4,7 +4,8 @@
             "name": "Emscripten",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${EMSDK}/upstream/emscripten/system/include"
+                "${EMSDK}/upstream/emscripten/system/include",
+                "${workspaceFolder}/imgui"
             ],
             "defines": [
                 "__EMSCRIPTEN__"
