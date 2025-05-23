@@ -17,7 +17,7 @@
 // my includes
 #include "atom.h"
 #include "atomrenderer.h"
-#include "link.h"
+#include "bond.h"
 #include "rule.h"
 
 // Dear ImGui
@@ -32,59 +32,47 @@ public:
      
         SDL_CreateWindowAndRenderer(1600, 900, SDL_WINDOW_RESIZABLE, &window, &renderer);
 
-        setup_imgui();
+        imgui_setup();
 
         atom_renderer = std::make_unique<AtomRenderer>(*renderer);
         
         int width, height;
         SDL_GetWindowSize(window, &width,&height);
 
-        for (int i=0;i<100;++i) {
-            int x=rand()%width;
-            int y=rand()%height;
-            char type = 'a' + rand()%6;
-            int state = 0;
-            atoms.push_back(std::make_shared<Atom>(x,y,type,state));
-        }
+        // rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 1));
+        // rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 1));
+        // rules.push_back(std::make_unique<Rule>('c', 0, false, 'd', 0, 1, true, 1));
+        // rules.push_back(std::make_unique<Rule>('d', 0, false, 'e', 0, 1, true, 1));
+        // rules.push_back(std::make_unique<Rule>('e', 0, false, 'f', 0, 1, true, 1));
+         
+        restart();
 
-        // for (int i=0;i<100;++i) {
-        //     auto atom1=atoms[rand()%atoms.size()];
-        //     auto atom2=atoms[rand()%atoms.size()];
-        //     if (atom1 != atom2) {
-        //         links.push_back(std::make_shared<Link>(atom1, atom2));
-        //     }
-        // }
-
-        rules.push_back(std::make_unique<Rule>(Rule::Type::BOND, 'a', 'b', 0, 0, 1, 1));
-        rules.push_back(std::make_unique<Rule>(Rule::Type::BOND, 'b', 'c', 1, 0, 2, 2));
-        rules.push_back(std::make_unique<Rule>(Rule::Type::BOND, 'c', 'd', 2, 0, 3, 3));
-        rules.push_back(std::make_unique<Rule>(Rule::Type::BOND, 'd', 'e', 3, 0, 4, 4));
-        rules.push_back(std::make_unique<Rule>(Rule::Type::BOND, 'e', 'f', 4, 0, 5, 5));
-        
-        
-   }
+    }
                
     void update() {
         int width, height;
         SDL_GetWindowSize(window, &width,&height);
 
-        // TODO: expensive pairwise search
+        //TODO: expensive pairwise search
         for (int i=0;i<atoms.size();++i) {
             for (int j=i+1;j<atoms.size();++j) {
                 auto& atom1 = atoms[i];
                 auto& atom2 = atoms[j];
                 auto dist = sqrt(pow(atom1->x-atom2->x,2) + pow(atom1->y-atom2->y,2));
                 if (dist < bonding_radius) {
-                    // TODO: expensive trying all rules                        
-                    for (auto& rule: rules) {
-                        try_rule(*rule, atom1, atom2);
-                        try_rule(*rule, atom2, atom1);
+                     for (auto& rule: rules) {
+                        if (match_rule(*rule, atom1, atom2)) {
+                            apply_rule(*rule, atom1, atom2);
+                        }
+                        if (match_rule(*rule, atom2, atom1)) {
+                            apply_rule(*rule, atom2, atom1);
+                        }
                     }
                 }
             }
         }
-        for (auto& link: links) {
-            link->update();
+        for (auto& bond: bonds) {
+            bond->update();
         }
         for (auto& atom: atoms) {
             atom->update(width,height);
@@ -103,39 +91,50 @@ public:
         }
 
         SDL_SetRenderDrawColor(renderer, 255,55,255,255);
-        for (auto& link: links) {
-                link->draw(*renderer);
+        for (auto& bond: bonds) {
+                bond->draw(*renderer);
         }
 
         SDL_RenderPresent(renderer);
         
         imgui_render_frame();
-
-        SDL_GL_SwapWindow(window);
         
     }
     
 private:
-    bool try_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2) {
-
-        if (rule.match(*atom1, *atom2)) {
-            rule.apply_after_state(*atom1, *atom2);
-            if (rule.type == Rule::Type::BOND) {
-                links.push_back(std::make_shared<Link>(atom1, atom2));
-            }
-            else if (rule.type == Rule::Type::BREAK) {
-                // TODO: expensive iterating over links
-                auto it = std::remove_if(links.begin(), links.end(), [&](const std::shared_ptr<Link>& link) {
-                    return (link->atom1 == atom1 && link->atom2 == atom2) || (link->atom1 == atom2 && link->atom2 == atom1);
-                });
-                links.erase(it, links.end());
-            }
-            return true;
-        }
-        return false;
-    }
     
-    void setup_imgui() {
+    bool match_rule(const Rule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2) const
+    {
+        if (atom1->type != rule.atom_type1 || atom2->type != rule.atom_type2) return false;
+        if (atom1->state != rule.before_state1 || atom2->state != rule.before_state2) return false;
+        auto bonds_it = std::find_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
+            return (bond->atom1 == atom1 && bond->atom2 == atom2) 
+                || (bond->atom1 == atom2 && bond->atom2 == atom1);
+        });
+        bool bonded = (bonds_it != bonds.end());
+        if (rule.before_bonded != bonded) return false;
+        return true;
+    };
+    
+    void apply_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
+    {
+        atom1->state = rule.after_state1;
+        atom2->state = rule.after_state2;
+        auto bonds_it = std::remove_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
+            return (bond->atom1 == atom1 && bond->atom2 == atom2) 
+                || (bond->atom1 == atom2 && bond->atom2 == atom1);
+        });
+        bool bonded = (bonds_it != bonds.end());
+        if (rule.after_bonded != bonded) {
+            if (rule.after_bonded) {
+                bonds.push_back(std::make_shared<Bond>(atom1, atom2));
+            } else {
+                bonds.erase(bonds_it);
+            }
+        }
+    };
+    
+    void imgui_setup() {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
@@ -149,27 +148,127 @@ private:
     }
 
     void imgui_start_frame() {
-        // (Where your code calls SDL_PollEvent())
+        // Forward event to imGui backend
+        // TODO: should this be a loop? And also do my own event processing?
         SDL_Event event;
         SDL_PollEvent(&event);
-        ImGui_ImplSDL2_ProcessEvent(&event); // Forward your event to backend
+        ImGui_ImplSDL2_ProcessEvent(&event); 
 
-        // (After event loop)
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow(); // Show demo window! :)
+        // ImGui::ShowDemoWindow(); // Show demo window! :)
+
+        // Creates a new window.
+        if (ImGui::Begin("Test Window"))
+        {
+            if (ImGui::Button("Restart")) {
+                restart();
+            }
+            ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
+            ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
+            ImGui::SeparatorText("Rules");
+            for (auto& rule: rules) {
+                ImGui::PushID(rule.get());
+                ImGui::PushItemWidth(50);
+
+                const char* atom_type_items[] = { "a","b","c","d","e","f"};
+                const char* atom_state_items[] = { "0","1","2","3","4","5","6","7","8","9"}; 
+
+                // atom 1 type
+                {
+                    static int current_item_atom1 = 0;
+                    current_item_atom1 = rule->atom_type1 - 'a';
+                    ImGui::Combo("##type1", &current_item_atom1, atom_type_items, IM_ARRAYSIZE(atom_type_items));
+                    rule->atom_type1 = 'a' + current_item_atom1;
+                }
+                ImGui::SameLine();
+                // atom 1 before state 
+                {
+                    static int current_item_before_state_1 = 0;
+                    current_item_before_state_1 = rule->before_state1;
+                    ImGui::Combo("##before1", &current_item_before_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+                    rule->before_state1 = current_item_before_state_1;
+                }
+                ImGui::SameLine();
+                {
+                    static bool current_bonded_before = false;
+                    current_bonded_before = rule->before_bonded;
+                    ImGui::Checkbox("##bonded_before", &current_bonded_before);
+                    rule->before_bonded = current_bonded_before;
+                }
+                ImGui::SameLine();
+                // atom 2 type
+                {
+                    static int current_item_atom2 = 0;
+                    current_item_atom2 = rule->atom_type2 - 'a';
+                    ImGui::Combo("##type2", &current_item_atom2, atom_type_items, IM_ARRAYSIZE(atom_type_items));
+                    rule->atom_type2 = 'a' + current_item_atom2;
+                }
+                ImGui::SameLine();
+                // atom 2 before state 
+                {
+                    static int current_item_before_state_2 = 0;
+                    current_item_before_state_2 = rule->before_state2;
+                    ImGui::Combo("##before2", &current_item_before_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+                    rule->before_state2 = current_item_before_state_2;
+                }
+                ImGui::SameLine();
+                ImGui::Text("->");
+                ImGui::SameLine();
+                // atom 1 after state 
+                {
+                    static int current_item_after_state_1 = 0;
+                    current_item_after_state_1 = rule->after_state1;
+                    ImGui::Combo("##after1", &current_item_after_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+                    rule->after_state1 = current_item_after_state_1;
+                }
+                ImGui::SameLine();
+                {
+                    static bool current_bonded_after = false;
+                    current_bonded_after = rule->after_bonded;
+                    ImGui::Checkbox("##bonded_after", &current_bonded_after);
+                    rule->after_bonded = current_bonded_after;
+                }
+                ImGui::SameLine();
+                // atom 2 after state 
+                {
+                    static int current_item_after_state_2 = 0;
+                    current_item_after_state_2 = rule->after_state2;
+                    ImGui::Combo("##after2", &current_item_after_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+                    rule->after_state2 = current_item_after_state_2;
+                }
+                ImGui::PopItemWidth();
+                ImGui::PopID();
+            }
+        }
+        if (ImGui::Button("Add Rule")) {
+            add_rule();
+        }
+        ImGui::End();
     }
 
     void imgui_render_frame() {
-        // Rendering
-        // (Your code clears your framebuffer, renders your other stuff etc.)
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        // (Your code calls SDL_GL_SwapWindow() etc.)
     }
-       
+    
+    void restart() {
+        atoms.clear();
+        bonds.clear();
+        for (int i=0;i<100;++i) {
+            int x=rand()%1600;
+            int y=rand()%900;
+            char type = 'a' + rand()%6;
+            int state = 0;
+            atoms.push_back(std::make_shared<Atom>(x,y,type,state));
+        }
+    }
+
+    void add_rule() {
+        rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 0, true, 0));
+    }
     // ----- variables ------
     const float bonding_radius = 50;
 
@@ -177,7 +276,7 @@ private:
     SDL_Renderer* renderer;
     std::unique_ptr<AtomRenderer> atom_renderer;
     std::vector<std::shared_ptr<Atom>> atoms;
-    std::vector<std::shared_ptr<Link>> links;
+    std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
     
 };

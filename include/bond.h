@@ -1,19 +1,18 @@
 #pragma once
 
 #include <memory>
-
-#include "atom.h"
 #include <SDL2/SDL.h>
 
-struct Link {
+#include "atom.h"
+
+struct Bond {
 
     std::shared_ptr<Atom> atom1;
     std::shared_ptr<Atom> atom2;
     
-    Link(std::shared_ptr<Atom> atom1, std::shared_ptr<Atom> atom2)
+    Bond(std::shared_ptr<Atom> atom1, std::shared_ptr<Atom> atom2)
         :atom1(atom1), atom2(atom2)
     {
-      
     };
 
     void update() {
