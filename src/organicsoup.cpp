@@ -370,6 +370,7 @@ private:
                 int y=rand()%900;
                 char type = 'a' + color;
                 atoms.push_back(std::make_shared<Atom>(x,y,type,0));
+                spacemap->add_atom(atoms.back());
             }
         }
     }

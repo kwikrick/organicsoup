@@ -77,15 +77,13 @@ struct SpaceMap
         for (int ix1 = 0; ix1 < nx; ++ix1) {
             for (int iy1 = 0; iy1 < ny; ++iy1) {
                 int index1 = grid_coord_to_index(ix1, iy1);
-                if (index1 < 0) continue;
                 if (cells[index1].empty()) continue;
                 auto cell1 = cells[index1];
                 for (int ix2 = ix1; ix2 <= ix1+rx; ++ix2) {
-                    if (ix2 >= nx) continue;
+                    if (ix2 >= nx) break;
                     for (int iy2 = iy1; iy2 <= iy1+ry; ++iy2) {
-                        if (iy2 >= ny) continue;
+                        if (iy2 >= ny) break;
                         int index2 = grid_coord_to_index(ix2, iy2);
-                        if (index2 < 0) continue;   
                         auto cell2 = cells[index2];
                         if (cell2.empty()) continue;
                         for (auto& atom1 : cell1) {
