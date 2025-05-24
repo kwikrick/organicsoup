@@ -33,16 +33,24 @@ public:
         float diameter = radius + other.radius;
         if (d2 < diameter * diameter) {
             float d = sqrt(d2)+0.0001f; // avoid division by zero
-            float nx = abs(dx/d); // normal vector
+            float nx = abs(dx/d); // normal vector absolute
             float ny = abs(dy/d);
-            // delta velocity
+    
+            // elastic collision
             float dvx_self = nx * (vx + ny * -vy);
             float dvy_self = ny * (vy + nx * vx);
             float dvx_other = nx * (other.vx + ny * -other.vy);
-            float dvy_other = ny * (other.vy + nx * other.vx);
-            // elastic collision
-            float dvx = dvx_self - dvx_other;
-            float dvy = dvy_self - dvy_other;
+            float dvy_other = ny * (other.vy + nx * other.vx);        
+            float dvx_elastic = dvx_self - dvx_other;
+            float dvy_elastic = dvy_self - dvy_other;
+            // inelastic collision
+            float vx_inelastic = (vx + other.vx) / 2;
+            float vy_inelastic = (vy + other.vy) / 2;
+            float dvx_inelastic = vx - vx_inelastic;
+            float dvy_inelastic = vy - vy_inelastic;
+            // apply collision
+            float dvx = dvx_elastic * collision_elasticity + dvx_inelastic * (1-collision_elasticity);
+            float dvy = dvy_elastic * collision_elasticity + dvy_inelastic * (1-collision_elasticity);
             vx -= dvx;
             vy -= dvy;
             other.vx += dvx;
@@ -66,9 +74,9 @@ public:
     
     static constexpr float radius = 16;
     
-    const float friction = 0.01;
-    const float temp = 0.1;
-    const float collide_strength = 1;
+    const float friction = 0.001;
+    const float temp = 0.2;
+    const float collision_elasticity = 0.9; // 0 = inelastic, 1 = elastic
     
 };
 
