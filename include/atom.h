@@ -8,8 +8,8 @@ public:
     Atom(float x, float y, char type, int state)
         :x(x),y(y),type(type),state(state)
     {
-        vx += randf(-10,10);
-        vy += randf(-10,10);      
+        //vx += randf(-10,10);
+        //vy += randf(-10,10);      
     };
     
     void update(int width, int height) {        // TODO: add delta parameter
@@ -35,8 +35,6 @@ public:
             float d = sqrt(d2)+0.0001f; // avoid division by zero
             float nx = abs(dx/d); // normal vector
             float ny = abs(dy/d);
-            float px = -ny; // perpendicular vector
-            float py = nx;
             // delta velocity
             float dvx_self = nx * (vx + ny * -vy);
             float dvy_self = ny * (vy + nx * vx);
@@ -50,10 +48,12 @@ public:
             other.vx += dvx;
             other.vy += dvy;
             // move apart
-            x = x - nx * (diameter - d)/2;
-            y = y - ny * (diameter - d)/2;
-            other.x = other.x + nx * (diameter - d)/2;
-            other.y = other.y + ny * (diameter - d)/2;
+            float correct_x = dx/d * (diameter - d)/2; 
+            float correct_y = dy/d * (diameter - d)/2;
+            x -= correct_x;
+            y -= correct_y;
+            other.x += correct_x;
+            other.y += correct_y;
         }
     };
     
@@ -66,8 +66,8 @@ public:
     
     static constexpr float radius = 16;
     
-    const float friction = 0.0;
-    const float temp = 0.0;
+    const float friction = 0.01;
+    const float temp = 0.1;
     const float collide_strength = 1;
     
 };
