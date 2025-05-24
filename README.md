@@ -8,3 +8,5 @@ This particular chemistry is very simplfied and abstracted away from the real wo
 It's purpose is to allow exploration of interesting and potenially life-like systems.
 
 This program a partial re-creation and variation based on [Organic Builder](https://bertranddechoux.github.io/OrganicBuilder/). 
+
+The web version of Organic Soup can be played with here: https://kwikrick.github.io/organicsoup/
