@@ -31,21 +31,20 @@
 class Application {
 public:
     Application() {
-        const int width = 1600, height = 900;
         
-        SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_RESIZABLE, &window, &renderer);
+        SDL_CreateWindowAndRenderer(space_width, space_height, SDL_WINDOW_RESIZABLE, &window, &renderer);
         SDL_SetWindowTitle(window, "Organic Soup");
   
         imgui_setup();
 
         atom_renderer = std::make_unique<AtomRenderer>(*renderer);
-        spacemap = std::make_unique<SpaceMap>(width,height, bonding_radius, bonding_radius);
+        spacemap = std::make_unique<SpaceMap>(space_width, space_height, bonding_radius*2, bonding_radius*2);
 
-        rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 0));
-        rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 0));
-        rules.push_back(std::make_unique<Rule>('c', 0, false, 'd', 0, 1, true, 0));
-        rules.push_back(std::make_unique<Rule>('d', 0, false, 'e', 0, 1, true, 0));
-        rules.push_back(std::make_unique<Rule>('e', 0, false, 'f', 0, 1, true, 0));
+        // rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 0));
+        // rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 0));
+        // rules.push_back(std::make_unique<Rule>('c', 0, false, 'd', 0, 1, true, 0));
+        // rules.push_back(std::make_unique<Rule>('d', 0, false, 'e', 0, 1, true, 0));
+        // rules.push_back(std::make_unique<Rule>('e', 0, false, 'f', 0, 1, true, 0));
          
         restart();
 
@@ -69,8 +68,8 @@ public:
 
         auto clock_start = std::chrono::high_resolution_clock::now();
 
-        int width, height;
-        SDL_GetWindowSize(window, &width,&height);
+        //int width, height;
+        //SDL_GetWindowSize(window, &width,&height);
 
         debug_num_pairs_tested = 0;
         debug_num_rules_tested = 0;
@@ -108,7 +107,7 @@ public:
         for (auto& atom: atoms) {
             float old_x = atom->x;
             float old_y = atom->y;
-            atom->update(width,height);
+            atom->update(space_width,space_height);
             spacemap->update_atom(atom, old_x, old_y);
         }
 
@@ -358,6 +357,9 @@ private:
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
+
+    const int space_width = 1600;
+    const int space_height = 900;
 
     std::unique_ptr<SpaceMap> spacemap;
     std::unique_ptr<AtomRenderer> atom_renderer;

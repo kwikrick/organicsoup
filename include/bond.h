@@ -31,7 +31,7 @@ struct Bond {
         SDL_RenderDrawLine(&renderer, atom1->x, atom1->y, atom2->x, atom2->y);
     };
 
-    const float length = 50;
+    const float length = 32;
     const float strength = 0.01;
 };
 

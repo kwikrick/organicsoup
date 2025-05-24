@@ -80,9 +80,9 @@ struct SpaceMap
                 if (index1 < 0) continue;
                 if (cells[index1].empty()) continue;
                 auto cell1 = cells[index1];
-                for (int ix2 = ix1; ix2 < ix1+rx; ++ix2) {
+                for (int ix2 = ix1; ix2 <= ix1+rx; ++ix2) {
                     if (ix2 >= nx) continue;
-                    for (int iy2 = iy1; iy2 < iy1+ry; ++iy2) {
+                    for (int iy2 = iy1; iy2 <= iy1+ry; ++iy2) {
                         if (iy2 >= ny) continue;
                         int index2 = grid_coord_to_index(ix2, iy2);
                         if (index2 < 0) continue;   
