@@ -8,7 +8,8 @@ public:
     Atom(float x, float y, char type, int state)
         :x(x),y(y),type(type),state(state)
     {
-   
+        vx += randf(-10,10);
+        vy += randf(-10,10);      
     };
     
     void update(int width, int height) {        // TODO: add delta parameter
@@ -19,22 +20,40 @@ public:
         vy -= (vy * friction);
         x += vx;
         y += vy;
-        if (x<0) {vx=-vx; x+=vx/2;}
-        if (y<0) {vy=-vy; y+=vy/2;}
-        if (x>width) {vx=-vy; x+=vx/2;}
-        if (y>height) {vy=-vy; y+=vy/2;}
+        if (x<0 && vx<0) {vx=-vx; x+=vx/2;}
+        if (y<0 && vy<0) {vy=-vy; y+=vy/2;}
+        if (x>width && vx>0) {vx=-vx; x+=vx/2;}
+        if (y>height && vy>0) {vy=-vy; y+=vy/2;}
     }
 
     void collide(Atom& other) {
         float dx = other.x - x;
         float dy = other.y - y;
         float d2 = dx*dx + dy*dy;
-        if (d2 < radius * radius) {
-            auto d = sqrt(d2 + 1);  // never zero
-            vx -= dx / d * collide_strength;
-            vy -= dy / d * collide_strength;
-            other.vx += dx /d * collide_strength;
-            other.vy += dy /d * collide_strength;
+        float diameter = radius + other.radius;
+        if (d2 < diameter * diameter) {
+            float d = sqrt(d2)+0.0001f; // avoid division by zero
+            float nx = abs(dx/d); // normal vector
+            float ny = abs(dy/d);
+            float px = -ny; // perpendicular vector
+            float py = nx;
+            // delta velocity
+            float dvx_self = nx * (vx + ny * -vy);
+            float dvy_self = ny * (vy + nx * vx);
+            float dvx_other = nx * (other.vx + ny * -other.vy);
+            float dvy_other = ny * (other.vy + nx * other.vx);
+            // elastic collision
+            float dvx = dvx_self - dvx_other;
+            float dvy = dvy_self - dvy_other;
+            vx -= dvx;
+            vy -= dvy;
+            other.vx += dvx;
+            other.vy += dvy;
+            // move apart
+            x = x - nx * (diameter - d)/2;
+            y = y - ny * (diameter - d)/2;
+            other.x = other.x + nx * (diameter - d)/2;
+            other.y = other.y + ny * (diameter - d)/2;
         }
     };
     
@@ -47,8 +66,8 @@ public:
     
     static constexpr float radius = 16;
     
-    const float friction = 0.1;
-    const float temp = 1;
+    const float friction = 0.0;
+    const float temp = 0.0;
     const float collide_strength = 1;
     
 };
