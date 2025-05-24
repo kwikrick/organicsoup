@@ -50,6 +50,9 @@
         "tuple": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "algorithm": "cpp"
-    }
+        "algorithm": "cpp",
+        "charconv": "cpp",
+        "sstream": "cpp"
+    },
+    "makefile.makefilePath": "Makefile"
 }

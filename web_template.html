@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+    <style>
+        .title {
+          font-family: Arial, sans-serif;
+          font-size: 24px;
+          text-align: center;
+          margin-top: 20px;
+        }
+        .emscripten {
+          display: block;
+          margin: 0 auto;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="title">Organic Builder</div>
+    
+    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+    
+    <script type='text/javascript'>
+      var Module = {
+        print: (function() {
+          return function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.log(text);
+          };
+        })(),
+        canvas: (() => {
+          var canvas = document.getElementById('canvas');
+
+          // As a default initial behavior, pop up an alert when webgl context is lost. To make your
+          // application robust, you may want to override this behavior before shipping!
+          // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+          canvas.addEventListener("webglcontextlost", (e) => { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+          return canvas;
+        })(),
+        setStatus: (text) => {
+          if (text) {
+            console.log('[status] ' + text);
+          }
+        },
+      };
+    </script>
+    {{{ SCRIPT }}}
+  </body>
+</html>

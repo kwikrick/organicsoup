@@ -1,7 +1,8 @@
 // Organic Builder Clone
 // by kwikrick
 
-// runs as a web-app (cpp -> html+js+wasm)
+// Define WEBAPP when compiling a web applicaion with Emscripten (cpp -> html+js+wasm)
+// Set from the Makefile with with a preprocessor flag, e.g. -DWEBAPP
 // #define WEBAPP
 
 #include <SDL2/SDL.h>

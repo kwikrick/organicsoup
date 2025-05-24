@@ -6,11 +6,12 @@ TARGET_EXEC ?= index.html
 BUILD_DIR ?= ./build_web
 SRC_DIRS ?= ./src ./include ./imgui
 EXTRA_SRCS ?= ./imgui/backends/imgui_impl_sdl2.cpp ./imgui/backends/imgui_impl_opengl3.cpp
+EM_HTML ?= ./web_template.html
 
 CC = emcc
 CXX = em++
 
-EMFLAGS=-sUSE_SDL=2 -sUSE_SDL_TTF=2
+EMFLAGS=-sUSE_SDL=2 -sUSE_SDL_TTF=2 --shell-file $(EM_HTML)
 CXXFLAGS= $(EMFLAGS) -std=c++20 -DWEBAPP
 LDFLAGS=$(EMFLAGS) --embed-file assets
 
@@ -23,7 +24,7 @@ INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
 CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
 
-$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
+$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS) $(EM_HTML)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
 # assembly
