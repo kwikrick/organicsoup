@@ -213,12 +213,18 @@ private:
             if (ImGui::Button("Restart")) {
                 restart();
             }
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(100);
-            ImGui::SliderInt("starting atoms", &num_start_atoms, 0, 2000);
-            
+            ImGui::PushItemWidth(100);
+            for (int color=0;color<start_atoms.size();++color) {
+                std::string label = std::format("{:c}",'a' + color);
+                ImGui::SliderInt(label.c_str(), &start_atoms[color], 0, 1000);
+            }
+            ImGui::PopItemWidth(); 
+
+            ImGui::SeparatorText("Statistics");
+
             ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
             ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
+
             ImGui::SeparatorText("Rules");
             for (auto& rule: rules) {
                 ImGui::PushID(rule.get());
@@ -329,12 +335,13 @@ private:
         bonds.clear();
         spacemap->clear();
         // create random atoms
-        for (int i=0;i<num_start_atoms;++i) {
-            int x=rand()%1600;
-            int y=rand()%900;
-            char type = 'a' + rand()%6;
-            int state = 0;
-            atoms.push_back(std::make_shared<Atom>(x,y,type,state));
+        for (int color=0;color<6;++color) {
+            for (int i=0;i<start_atoms[color];++i) {
+                int x=rand()%1600;
+                int y=rand()%900;
+                char type = 'a' + color;
+                atoms.push_back(std::make_shared<Atom>(x,y,type,0));
+            }
         }
     }
 
@@ -343,9 +350,9 @@ private:
     }
 
     // ----- variables ------
-    const float bonding_radius = 50;
+    const float bonding_radius = 32;
 
-    int num_start_atoms = 100;
+    std::array<int,6> start_atoms = {16,16,16,16,16,16};
 
     bool quit = false;
 
