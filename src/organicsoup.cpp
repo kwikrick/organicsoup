@@ -21,6 +21,7 @@
 #include "bond.h"
 #include "rule.h"
 #include "spacemap.h"
+#include "physicsparameters.h"
 
 // Dear ImGui
 #include "imgui.h"
@@ -32,13 +33,19 @@ class Application {
 public:
     Application() {
         
-        SDL_CreateWindowAndRenderer(space_width, space_height, SDL_WINDOW_RESIZABLE, &window, &renderer);
+        //  fixed size for now
+        const int window_width = 1600;
+        const int window_height = 900;
+        params.space_width = window_width;
+        params.space_height = window_height;
+        
+        SDL_CreateWindowAndRenderer(window_width, window_height, SDL_WINDOW_RESIZABLE, &window, &renderer);
         SDL_SetWindowTitle(window, "Organic Soup");
   
         imgui_setup();
 
         atom_renderer = std::make_unique<AtomRenderer>(*renderer);
-        spacemap = std::make_unique<SpaceMap>(space_width, space_height, bonding_radius*2, bonding_radius*2);
+        spacemap = std::make_unique<SpaceMap>(window_width, window_height, params.atom_radius*2, params.atom_radius*2);
 
         // rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 0));
         // rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 0));
@@ -75,7 +82,7 @@ public:
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
 
-        auto pairs = spacemap->get_pairs(bonding_radius);
+        auto pairs = spacemap->get_pairs(params.bonding_start_radius);
         for (auto& pair: pairs) {
             debug_num_pairs_tested++;
             auto& atom1 = pair.first;
@@ -94,20 +101,32 @@ public:
             }
         }
 
+        // break bonds
+        auto break_bonds = std::remove_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
+            float dx = bond->atom2->x - bond->atom1->x;
+            float dy = bond->atom2->y - bond->atom1->y;
+            float dist = sqrt(dx*dx + dy*dy);
+            return dist > params.bonding_end_radius;
+        });
+        bonds.erase(break_bonds, bonds.end());
+
         // collide
         for (auto& pair: pairs) {
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
-            atom1->collide(*atom2);
+            atom1->collide(*atom2,params);
         }
 
+        // enfore bonds
         for (auto& bond: bonds) {
-            bond->update();
+            bond->update(params);
         }
+
+        // move atoms
         for (auto& atom: atoms) {
             float old_x = atom->x;
             float old_y = atom->y;
-            atom->update(space_width,space_height);
+            atom->update(params);
             spacemap->update_atom(atom, old_x, old_y);
         }
 
@@ -310,14 +329,25 @@ private:
         if (ImGui::Button("Add Rule")) {
             add_rule();
         }
-        ImGui::SeparatorText("Debug");
-        ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
-        ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
-        ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
-        ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
-        ImGui::LabelText("Draw duration (ms)", "%f", debug_draw_duration * 1000);
-        ImGui::LabelText("Average FPS", "%f", debug_average_fps);
-        
+        if (ImGui::CollapsingHeader("Physics Parameters")) {
+            ImGui::SliderFloat("Temperature", &params.temp, 0.0f, 1.0f);
+            ImGui::SliderFloat("Friction", &params.friction, 0.0f, 1.0f);
+            ImGui::SliderFloat("Collision Elasticity", &params.collision_elasticity, 0.0f, 1.0f);
+            //ImGui::SliderFloat("Atom Radius", &params.atom_radius, 1.0f, 100.0f);
+            ImGui::SliderFloat("Bonding Start Radius", &params.bonding_start_radius, 1.0f, 100.0f);
+            ImGui::SliderFloat("Bonding End Radius", &params.bonding_end_radius, 1.0f, 100.0f);
+            ImGui::SliderFloat("Bonding Length", &params.bonding_length, 1.0f, 100.0f);
+            ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
+        }
+      
+        if (ImGui::CollapsingHeader("Debug")) {
+            ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
+            ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
+            ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
+            ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
+            ImGui::LabelText("Draw duration (ms)", "%f", debug_draw_duration * 1000);
+            ImGui::LabelText("Average FPS", "%f", debug_average_fps);
+        }
         ImGui::End();
     }
 
@@ -349,8 +379,6 @@ private:
     }
 
     // ----- variables ------
-    const float bonding_radius = 32;
-
     std::array<int,6> start_atoms = {16,16,16,16,16,16};
 
     bool quit = false;
@@ -358,9 +386,7 @@ private:
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
 
-    const int space_width = 1600;
-    const int space_height = 900;
-
+    PhysicsParameters params;
     std::unique_ptr<SpaceMap> spacemap;
     std::unique_ptr<AtomRenderer> atom_renderer;
     std::vector<std::shared_ptr<Atom>> atoms;

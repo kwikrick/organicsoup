@@ -15,11 +15,11 @@ struct Bond {
     {
     };
 
-    void update() {
+    void update(const PhysicsParameters& params) {
         float dx = atom2->x - atom1->x;
         float dy = atom2->y - atom1->y;
         float dist = sqrt(dx*dx + dy*dy);
-        float force = (dist-length) * strength;
+        float force = (dist-params.bonding_length) * params.bonding_strength;
         atom1->vx += force * dx / dist;
         atom1->vy += force * dy / dist;
         atom2->vx -= force * dx / dist;
@@ -30,8 +30,5 @@ struct Bond {
         //SDL_SetRenderDrawColor(&renderer, 255, 255, 255, 255);
         SDL_RenderDrawLine(&renderer, atom1->x, atom1->y, atom2->x, atom2->y);
     };
-
-    const float length = 32;
-    const float strength = 0.01;
 };
 
