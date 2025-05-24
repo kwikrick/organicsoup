@@ -34,7 +34,7 @@ public:
         const int width = 1600, height = 900;
         
         SDL_CreateWindowAndRenderer(width, height, SDL_WINDOW_RESIZABLE, &window, &renderer);
-        SDL_SetWindowTitle(window, "Organic Builder");
+        SDL_SetWindowTitle(window, "Organic Soup");
   
         imgui_setup();
 
@@ -208,7 +208,7 @@ private:
         // ImGui::ShowDemoWindow(); // Show demo window! :)
 
         // Creates a new window.
-        if (ImGui::Begin("Organic Builder")) {
+        if (ImGui::Begin("Organic Soup")) {
            
             if (ImGui::Button("Restart")) {
                 restart();

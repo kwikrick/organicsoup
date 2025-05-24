@@ -1,7 +1,7 @@
 # super-simple automatic Makefile, based on:
 #  https://spin.atomicobject.com/2016/08/26/makefile-c-projects/
 
-TARGET_EXEC ?= organicbuilder
+TARGET_EXEC ?= organicsoup
 
 BUILD_DIR ?= ./build_linux
 SRC_DIRS ?= ./src ./include ./imgui
