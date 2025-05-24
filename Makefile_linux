@@ -6,6 +6,8 @@ TARGET_EXEC ?= organicsoup
 BUILD_DIR ?= ./build_linux
 SRC_DIRS ?= ./src ./include ./imgui
 EXTRA_SRCS ?= ./imgui/backends/imgui_impl_sdl2.cpp ./imgui/backends/imgui_impl_opengl3.cpp
+ASSETS_DIR ?= ./assets
+# TODO: make dependy on asset files
 
 CC = gcc
 CXX = g++
@@ -25,6 +27,7 @@ CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
 
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+	cp -r $(ASSETS_DIR) $(BUILD_DIR)
 
 # assembly
 $(BUILD_DIR)/%.s.o: %.s
