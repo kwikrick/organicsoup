@@ -40,26 +40,35 @@ struct SpaceMap
         return iy*nx + ix;
     }
 
+    /*
     void add_atom(std::shared_ptr<Atom> atom) {
-        int i = position_to_index(atom->x, atom->y);
-        if (i < 0) return;
-        auto& cell = cells[i];
+        int index = position_to_index(atom->x, atom->y);
+        if (index < 0) return;
+        auto& cell = cells[index];
         cell.emplace_back(atom);
+        atom->spacemap_index = index; // store index in atom for quick access
     }
 
-    void remove_atom_old(std::shared_ptr<Atom> atom, float old_x, float old_y) {    
-        int i = position_to_index(old_x, old_y);
-        if (i < 0) return;
-        auto& cell = cells[i];
+    void remove_atom_old(std::shared_ptr<Atom> atom, int index) {    
+        if (index < 0) return;
+        auto& cell = cells[index];
         cell.erase(std::remove(cell.begin(), cell.end(), atom), cell.end());
     }
+    */
 
-    void update_atom(std::shared_ptr<Atom> atom, float old_x, float old_y) {
-        int old_i = position_to_index(old_x, old_y);
+    void update_atom(std::shared_ptr<Atom> atom) {
+        int old_i = atom->spacemap_index;
         int new_i = position_to_index(atom->x, atom->y);
         if (old_i != new_i) {
-            remove_atom_old(atom, old_x, old_y);
-            add_atom(atom);
+            if (old_i>=0) {
+                auto& old_cell = cells[old_i];
+                old_cell.erase(std::remove(old_cell.begin(), old_cell.end(), atom), old_cell.end());
+            }
+            auto& cell = cells[new_i];
+            if (new_i >= 0) {
+                cell.push_back(atom);
+            }
+            atom->spacemap_index = new_i;
         }
     }
    
