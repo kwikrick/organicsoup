@@ -39,7 +39,8 @@ public:
         params.space_width = window_width;
         params.space_height = window_height;
         
-        SDL_CreateWindowAndRenderer(window_width, window_height, SDL_WINDOW_RESIZABLE, &window, &renderer);
+        SDL_CreateWindowAndRenderer(window_width, window_height, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL, &window, &renderer);
+
         SDL_SetWindowTitle(window, "Organic Soup");
   
         imgui_setup();
@@ -162,7 +163,7 @@ public:
                 bond->draw(*renderer);
         }
 
-        SDL_RenderPresent(renderer);
+        SDL_RenderFlush(renderer);
         
         imgui_render_frame();
 
@@ -215,6 +216,7 @@ private:
     };
     
     void imgui_setup() {
+        IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
@@ -222,9 +224,9 @@ private:
         //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
         //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable; // Enable Multi-Viewport / Platform Windows
 
-        ImGui_ImplOpenGL3_Init("#version 100");
         ImGui_ImplSDL2_InitForOpenGL(window, SDL_GL_GetCurrentContext());
-
+        ImGui_ImplOpenGL3_Init();
+        
     }
 
     void imgui_start_frame() {
@@ -374,9 +376,7 @@ private:
     void imgui_render_frame() {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        #ifndef WEBAPP
-            SDL_GL_SwapWindow(window);      // needed in Native, not in webApp
-        #endif
+        SDL_GL_SwapWindow(window);
     }
     
     void restart() {
