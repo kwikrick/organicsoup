@@ -57,6 +57,19 @@ public:
 
     }
 
+    void frame() {
+        handle_events();
+        if (!paused) {
+            for (int i=0;i<iterations_per_frame;++i) {
+                update();
+            }
+        } else { 
+            debug_update_duration = 0;
+        }
+        draw();
+        SDL_Delay(frame_delay);
+    }
+
     void handle_events() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -111,7 +124,7 @@ public:
         for (auto& pair: pairs) {
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
-            atom1->collide(*atom2,params);
+            atom1->collide(*atom2,params);      // Bug: collide can move atom; spacemap is not updated
         }
 
         // enfore bonds
@@ -121,10 +134,8 @@ public:
 
         // move atoms
         for (auto& atom: atoms) {
-            float old_x = atom->x;
-            float old_y = atom->y;
             atom->update(params);
-            spacemap->update_atom(atom, old_x, old_y);
+            spacemap->update_atom(atom);
         }
 
         // log time
@@ -226,7 +237,15 @@ private:
 
         // Creates a new window.
         if (ImGui::Begin("Organic Soup")) {
+
+            ImGui::SeparatorText("Time");
            
+            ImGui::Checkbox("Pause", &paused);
+
+            ImGui::SliderInt("Iterations per frame", &iterations_per_frame, 1, 100);
+
+            ImGui::SeparatorText("World");
+
             if (ImGui::Button("Restart")) {
                 restart();
             }
@@ -234,14 +253,13 @@ private:
             for (int color=0;color<start_atoms.size();++color) {
                 std::string label = std::format("{:c}",'a' + color);
                 ImGui::SliderInt(label.c_str(), &start_atoms[color], 0, 1000);
+                if (color != 2 and color != 5) {
+                    ImGui::SameLine();
+                }
             }
             ImGui::PopItemWidth(); 
 
-            ImGui::SeparatorText("Statistics");
-
-            ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
-            ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
-
+    
             ImGui::SeparatorText("Rules");
             for (auto& rule: rules) {
                 ImGui::PushID(rule.get());
@@ -339,13 +357,16 @@ private:
             ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
         }
       
-        if (ImGui::CollapsingHeader("Debug")) {
+        if (ImGui::CollapsingHeader("Statistics")) {
+            ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
+            ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
             ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
             ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
             ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
             ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
             ImGui::LabelText("Draw duration (ms)", "%f", debug_draw_duration * 1000);
             ImGui::LabelText("Average FPS", "%f", debug_average_fps);
+            ImGui::SliderInt("Frame Delay (ms)", &frame_delay, 0, 16, "%d ms");
         }
         ImGui::End();
     }
@@ -381,7 +402,9 @@ private:
     // ----- variables ------
 
     bool quit = false;
-    bool pause = false;
+    bool paused = false;
+    int frame_delay = 16; // ms, ~60 fps
+    int iterations_per_frame = 1; // how many physics iterations per frame
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
@@ -398,6 +421,7 @@ private:
     std::vector<std::unique_ptr<Rule>> rules;
 
     // Performance variables
+    // TODO: rename debug->performance; or put in a struct
     int debug_num_pairs_tested = 0;
     int debug_num_rules_tested = 0;
     int debug_num_rules_applied = 0;
@@ -413,9 +437,7 @@ private:
 // global update function 
 void update(void* app_ptr) {        // ugly void* is only was Emscripten will pass arguments
     Application* application = static_cast<Application*>(app_ptr);
-    application->handle_events();
-    application->update();
-    application->draw();
+    application->frame();
 }
 
 int main(int argc, char* argv[]) {
@@ -448,10 +470,7 @@ int main(int argc, char* argv[]) {
     Application app;
    
     while(!app.quit_requested()) {
-        app.handle_events();
-        app.update();
-        app.draw();
-        SDL_Delay(16); // ~60 fps
+        app.frame();
     }
    
     ImGui_ImplOpenGL3_Shutdown();
