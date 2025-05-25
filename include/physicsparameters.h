@@ -11,8 +11,8 @@ struct PhysicsParameters
     float atom_radius = 16.0f; // radius of atoms
     float collision_elasticity = 0.9f; // elasticity of collisions
 
-    float bonding_start_radius = 40.0f;   // radius to start bonding atoms
-    float bonding_end_radius = 48.0f;     // radius to break bonding atoms
-    float bonding_length = 32.0f;         // length of bonding spring between atoms
-    float bonding_strength = 0.01f;       // strength of bonding spring between atoms
+    float bonding_distance = 32.0f;         // length of bonding spring between atoms
+    float bonding_start_distance = 33.0f;   // radius to start bonding atoms
+    float bonding_end_distance = 48.0f;     // radius to break bonding atoms
+    float bonding_strength = 0.1f;       // strength of bonding spring between atoms
 };

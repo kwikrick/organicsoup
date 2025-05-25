@@ -93,7 +93,7 @@ public:
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
 
-        auto pairs = spacemap->get_pairs(params.bonding_start_radius);
+        auto pairs = spacemap->get_pairs(params.bonding_start_distance);
         for (auto& pair: pairs) {
             debug_num_pairs_tested++;
             auto& atom1 = pair.first;
@@ -117,7 +117,7 @@ public:
             float dx = bond->atom2->x - bond->atom1->x;
             float dy = bond->atom2->y - bond->atom1->y;
             float dist = sqrt(dx*dx + dy*dy);
-            return dist > params.bonding_end_radius;
+            return dist > params.bonding_end_distance;
         });
         bonds.erase(break_bonds, bonds.end());
 
@@ -353,9 +353,9 @@ private:
             ImGui::SliderFloat("Friction", &params.friction, 0.0f, 1.0f);
             ImGui::SliderFloat("Collision Elasticity", &params.collision_elasticity, 0.0f, 1.0f);
             //ImGui::SliderFloat("Atom Radius", &params.atom_radius, 1.0f, 100.0f);
-            ImGui::SliderFloat("Bonding Start Radius", &params.bonding_start_radius, 1.0f, 100.0f);
-            ImGui::SliderFloat("Bonding End Radius", &params.bonding_end_radius, 1.0f, 100.0f);
-            ImGui::SliderFloat("Bonding Length", &params.bonding_length, 1.0f, 100.0f);
+            ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 100.0f);
+            ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 100.0f);
+            ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 100.0f);
             ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
         }
       

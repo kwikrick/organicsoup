@@ -19,7 +19,7 @@ struct Bond {
         float dx = atom2->x - atom1->x;
         float dy = atom2->y - atom1->y;
         float dist = sqrt(dx*dx + dy*dy);
-        float force = (dist-params.bonding_length) * params.bonding_strength;
+        float force = (dist-params.bonding_distance) * params.bonding_strength;
         atom1->vx += force * dx / dist;
         atom1->vy += force * dy / dist;
         atom2->vx -= force * dx / dist;
