@@ -2,3 +2,4 @@
 build_web
 build_linux
 imgui.ini
+.vscode
