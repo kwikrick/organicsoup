@@ -75,9 +75,6 @@ public:
 
         auto clock_start = std::chrono::high_resolution_clock::now();
 
-        //int width, height;
-        //SDL_GetWindowSize(window, &width,&height);
-
         debug_num_pairs_tested = 0;
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
@@ -130,6 +127,7 @@ public:
             spacemap->update_atom(atom, old_x, old_y);
         }
 
+        // log time
         auto clock_end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float> duration = clock_end - clock_start;
         debug_update_duration = duration.count();
@@ -157,15 +155,16 @@ public:
         
         imgui_render_frame();
 
+        // log time
         auto clock_end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float> duration = clock_end - clock_start;
         debug_draw_duration = duration.count();
 
+        // calculate FPS
         std::chrono::duration<float> frame_duration = clock_start- last_frame_clock;
         float frame_time = frame_duration.count(); 
         float fps = 1.0f / frame_time;
         debug_average_fps = debug_average_fps * 0.9f + fps * 0.1f;
-        
         last_frame_clock = clock_start;
 
         
@@ -380,20 +379,25 @@ private:
     }
 
     // ----- variables ------
-    std::array<int,6> start_atoms = {16,16,16,16,16,16};
 
     bool quit = false;
+    bool pause = false;
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
 
+    // parameters 
+    std::array<int,6> start_atoms = {16,16,16,16,16,16};
     PhysicsParameters params;
+
+    // data
     std::unique_ptr<SpaceMap> spacemap;
     std::unique_ptr<AtomRenderer> atom_renderer;
     std::vector<std::shared_ptr<Atom>> atoms;
     std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
 
+    // Performance variables
     int debug_num_pairs_tested = 0;
     int debug_num_rules_tested = 0;
     int debug_num_rules_applied = 0;
