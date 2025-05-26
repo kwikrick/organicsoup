@@ -34,7 +34,7 @@ public:
         texture_map.clear();
     };
 
-    void draw(const Atom& atom) {
+    void draw(const Atom& atom, float scale, float offset_x, float offset_y) {
         
         TypeState ts {atom.type, atom.state};
         SDL_Texture* texture = nullptr;
@@ -52,8 +52,9 @@ public:
             texture_map[ts] = texture;
         }
 
-        SDL_Rect tgt_rect = {(int)(atom.x-radius), (int)(atom.y-radius), (int)(2*radius), (int)(2*radius)};  
-        SDL_RenderCopy(&renderer, texture, nullptr, &tgt_rect); 
+    
+        SDL_FRect tgt_rect = {offset_x+(atom.x-radius)*scale, offset_y+(atom.y-radius)*scale, 2*radius*scale, 2*radius*scale};  
+        SDL_RenderCopyF(&renderer, texture, nullptr, &tgt_rect); 
     }
 
     SDL_Surface* create_surface(const Atom& atom) {

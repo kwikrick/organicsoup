@@ -26,9 +26,23 @@ struct Bond {
         atom2->vy -= force * dy / dist;
     };
 
-    void draw(SDL_Renderer& renderer) {
-        //SDL_SetRenderDrawColor(&renderer, 255, 255, 255, 255);
-        SDL_RenderDrawLine(&renderer, atom1->x, atom1->y, atom2->x, atom2->y);
+    void draw(SDL_Renderer& renderer, const PhysicsParameters& params, float scale, float offset_x, float offset_y) const {
+        SDL_SetRenderDrawColor(&renderer, 255, 255, 255, 255);
+        float dx = atom2->x - atom1->x;
+        float dy = atom2->y - atom1->y;
+        float d2 = dx * dx + dy * dy;
+        float d = sqrt(d2) + 0.0001f; // avoid division by zero
+        float nx = dx /d;
+        float ny = dy /d; 
+        float x1 = atom1->x + (params.atom_radius/2) * nx;
+        float y1 = atom1->y + (params.atom_radius/2) * ny;
+        float x2 = atom2->x - (params.atom_radius/2) * nx;
+        float y2 = atom2->y - (params.atom_radius/2) * ny;
+        x1 = offset_x + x1*scale;
+        y1 = offset_y + y1*scale;
+        x2 = offset_x + x2*scale;
+        y2 = offset_y + y2*scale;
+        SDL_RenderDrawLineF(&renderer, x1,y1,x2,y2);
     };
 };
 

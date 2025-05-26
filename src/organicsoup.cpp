@@ -46,7 +46,6 @@ public:
         imgui_setup();
 
         atom_renderer = std::make_unique<AtomRenderer>(*renderer);
-        spacemap = std::make_unique<SpaceMap>(window_width, window_height, params.atom_radius*2, params.atom_radius*2);
 
         // rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 0));
         // rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 0));
@@ -74,12 +73,37 @@ public:
     void handle_events() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+           
             if (event.type == SDL_QUIT) {
                 quit = true;
             }
-            ImGui_ImplSDL2_ProcessEvent(&event); 
+
+            ImGui_ImplSDL2_ProcessEvent(&event);
+            auto io = ImGui::GetIO();
+            if (!io.WantCaptureMouse)
+            {
+                float old_scale = scale;
+                if (event.type == SDL_MOUSEWHEEL) {
+                    if (event.wheel.y > 0) {
+                        scale *= 1.1f;
+                    } else if (event.wheel.y < 0) {
+                        scale /= 1.1f;
+                    }
+                    // TODO: recompute offset_x and offset_y to keep the mouse position stable
+                    int mouse_x, mouse_y;
+                    SDL_GetMouseState(&mouse_x, &mouse_y);
+                    offset_x -= (mouse_x - offset_x) * (scale / old_scale - 1);
+                    offset_y -= (mouse_y - offset_y) * (scale / old_scale - 1);
+                }
+                if (event.type == SDL_MOUSEMOTION) {
+                    if (event.motion.state & SDL_BUTTON(SDL_BUTTON_MIDDLE)) {
+                        offset_x += event.motion.xrel;
+                        offset_y += event.motion.yrel;
+                    }
+                }
+            }
         }
-    }
+     }
 
     bool quit_requested() const {
         return quit;
@@ -154,15 +178,8 @@ public:
         
         imgui_start_frame();
     
-        for (auto& atom: atoms) {
-                atom_renderer->draw(*atom);
-        }
-
-        SDL_SetRenderDrawColor(renderer, 255,55,255,255);
-        for (auto& bond: bonds) {
-                bond->draw(*renderer);
-        }
-
+        draw_world();
+        
         SDL_RenderFlush(renderer);
         
         imgui_render_frame();
@@ -184,6 +201,27 @@ public:
     
 private:
     
+    void draw_world() {
+
+        int window_width, window_height;
+        SDL_GetWindowSize(window, &window_width, &window_height);
+        SDL_SetRenderDrawColor(renderer, 64,64,64,255);
+        SDL_FRect window_rect = {0, 0, (float)window_width, (float)window_height};
+        SDL_RenderFillRectF(renderer, &window_rect);
+        SDL_SetRenderDrawColor(renderer, 0,0,0,255);
+        SDL_FRect space_rect = {offset_x, offset_y, params.space_width*scale, params.space_height*scale};
+        SDL_RenderFillRectF(renderer, &space_rect);
+
+        for (auto& atom: atoms) {
+                atom_renderer->draw(*atom, scale, offset_x, offset_y);
+        }
+
+        for (auto& bond: bonds) {
+                bond->draw(*renderer, params, scale, offset_x, offset_y);
+        }
+
+    }
+
     bool match_rule(const Rule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2) const
     {
         if (atom1->type != rule.atom_type1 || atom2->type != rule.atom_type2) return false;
@@ -251,6 +289,13 @@ private:
             if (ImGui::Button("Restart")) {
                 restart();
             }
+
+            ImGui::SetNextItemWidth(100);    
+            ImGui::InputFloat("width", &params.space_width, 100, 1000.0f);
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(100);    
+            ImGui::InputFloat("height", &params.space_height, 100, 1000.0f);
+
             ImGui::PushItemWidth(100);
             for (int color=0;color<start_atoms.size();++color) {
                 std::string label = std::format("{:c}",'a' + color);
@@ -261,7 +306,6 @@ private:
             }
             ImGui::PopItemWidth(); 
 
-    
             ImGui::SeparatorText("Rules");
             for (auto& rule: rules) {
                 ImGui::PushID(rule.get());
@@ -382,12 +426,15 @@ private:
     void restart() {
         atoms.clear();
         bonds.clear();
-        spacemap->clear();
+        //spacemap->clear();
+
+        // new spacemap for atom size and world size
+        spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);
         // create random atoms
         for (int color=0;color<6;++color) {
             for (int i=0;i<start_atoms[color];++i) {
-                int x=rand()%1600;
-                int y=rand()%900;
+                float x=randf(0,params.space_width);
+                float y=randf(0,params.space_height);
                 char type = 'a' + color;
                 atoms.push_back(std::make_shared<Atom>(x,y,type,0));
                 spacemap->update_atom(atoms.back());
@@ -408,6 +455,9 @@ private:
 
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
+    float scale = 1.0f;
+    float offset_x = 0.0f;
+    float offset_y = 0.0f;
 
     // parameters 
     std::array<int,6> start_atoms = {16,16,16,16,16,16};
