@@ -290,11 +290,18 @@ private:
                 restart();
             }
 
+            int old_width = params.space_width;
+            int old_height = params.space_height;
+            
             ImGui::SetNextItemWidth(100);    
             ImGui::InputFloat("width", &params.space_width, 100, 1000.0f);
             ImGui::SameLine();
             ImGui::SetNextItemWidth(100);    
             ImGui::InputFloat("height", &params.space_height, 100, 1000.0f);
+
+            if (old_width != params.space_width || old_height != params.space_height) {
+                resize();
+            }
 
             ImGui::PushItemWidth(100);
             for (int color=0;color<start_atoms.size();++color) {
@@ -422,11 +429,32 @@ private:
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
+
+    void resize() {
+        auto off_world = [&](std::shared_ptr<Atom> atom){ 
+            return atom->x < 0 || atom->x > params.space_width || atom->y < 0 || atom->y > params.space_height;
+        };
+        spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);
+        std::vector<std::shared_ptr<Bond>> bonds_to_remove;
+        for (auto& bond: bonds) {
+            if (off_world(bond->atom1) || off_world(bond->atom2)) {
+                bonds_to_remove.push_back(bond);        
+            }
+        }
+        for (auto& bond: bonds_to_remove) {
+            bonds.erase(std::remove(bonds.begin(),bonds.end(),bond),bonds.end());
+        }
+
+        atoms.erase(std::remove_if(atoms.begin(),atoms.end(),off_world),atoms.end());
+        for (auto& atom: atoms) {
+            atom->spacemap_index = -1;
+            spacemap->update_atom(atom);
+        }
+    }
     
     void restart() {
         atoms.clear();
         bonds.clear();
-        //spacemap->clear();
 
         // new spacemap for atom size and world size
         spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);

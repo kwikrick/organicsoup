@@ -72,12 +72,6 @@ struct SpaceMap
         }
     }
    
-    void clear() {
-        for (auto& cell : cells) {
-            cell.clear();
-        }
-    }
-
     using AtomPair = std::pair<std::shared_ptr<Atom>, std::shared_ptr<Atom>>;
     std::vector<AtomPair> get_pairs(float radius) const {
         std::vector<AtomPair> pairs;
