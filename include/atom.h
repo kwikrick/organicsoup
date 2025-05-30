@@ -34,14 +34,13 @@ public:
         float diameter = 2* params.atom_radius;
         if (d2 < diameter * diameter) {
             float d = sqrt(d2)+0.0001f; // avoid division by zero
-            float nx = abs(dx/d); // normal vector absolute
-            float ny = abs(dy/d);
-    
+            float nx = dx/d;
+            float ny = dy/d;
             // elastic collision
-            float dvx_self = nx * (vx + ny * -vy);
-            float dvy_self = ny * (vy + nx * vx);
-            float dvx_other = nx * (other.vx + ny * -other.vy);
-            float dvy_other = ny * (other.vy + nx * other.vx);        
+            float dvx_self = abs(nx) * (vx + ny * -vy);
+            float dvy_self = abs(ny) * (vy + nx * vx);
+            float dvx_other = abs(nx) * (other.vx + ny * -other.vy);
+            float dvy_other = abs(ny) * (other.vy + nx * other.vx);        
             float dvx_elastic = dvx_self - dvx_other;
             float dvy_elastic = dvy_self - dvy_other;
             // inelastic collision
@@ -57,8 +56,9 @@ public:
             other.vx += dvx;
             other.vy += dvy;
             // move apart
-            float correct_x = dx/d * (diameter - d)/2; 
-            float correct_y = dy/d * (diameter - d)/2;
+            // float d = sqrt(d2)+0.0001f; // avoid division by zero
+            float correct_x = nx * (diameter - d)/2; 
+            float correct_y = ny * (diameter - d)/2;
             x -= correct_x;
             y -= correct_y;
             other.x += correct_x;
