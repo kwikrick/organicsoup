@@ -12,7 +12,7 @@ CC = emcc
 CXX = em++
 
 EMFLAGS=-sUSE_SDL=2 -sUSE_SDL_TTF=2 --shell-file $(EM_HTML)
-CXXFLAGS= $(EMFLAGS) -std=c++20 -DWEBAPP
+CXXFLAGS= $(EMFLAGS) -std=c++20 -O3 -DWEBAPP
 LDFLAGS=$(EMFLAGS) --embed-file assets
 
 SRCS := $(shell find $(SRC_DIRS) -maxdepth 1 -name *.cpp -or -name *.c -or -name *.s) $(EXTRA_SRCS)
