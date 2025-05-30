@@ -37,17 +37,11 @@ public:
             float nx = dx/d;
             float ny = dy/d;
             // elastic collision
-            float dvx_self = abs(nx) * (vx + ny * -vy);
-            float dvy_self = abs(ny) * (vy + nx * vx);
-            float dvx_other = abs(nx) * (other.vx + ny * -other.vy);
-            float dvy_other = abs(ny) * (other.vy + nx * other.vx);        
-            float dvx_elastic = dvx_self - dvx_other;
-            float dvy_elastic = dvy_self - dvy_other;
+            float dvx_elastic = -nx * ((vx-other.vx)*(x-other.x) + (vy-other.vy)*(y-other.y)) / d;
+            float dvy_elastic = -ny * ((vx-other.vx)*(x-other.x) + (vy-other.vy)*(y-other.y)) / d;
             // inelastic collision
-            float vx_inelastic = (vx + other.vx) / 2;
-            float vy_inelastic = (vy + other.vy) / 2;
-            float dvx_inelastic = vx - vx_inelastic;
-            float dvy_inelastic = vy - vy_inelastic;
+            float dvx_inelastic = vx - (vx + other.vx) / 2;
+            float dvy_inelastic = vy - (vy + other.vy) / 2;
             // apply collision
             float dvx = dvx_elastic * params.collision_elasticity + dvx_inelastic * (1-params.collision_elasticity);
             float dvy = dvy_elastic * params.collision_elasticity + dvy_inelastic * (1-params.collision_elasticity);
@@ -56,7 +50,6 @@ public:
             other.vx += dvx;
             other.vy += dvy;
             // move apart
-            // float d = sqrt(d2)+0.0001f; // avoid division by zero
             float correct_x = nx * (diameter - d)/2; 
             float correct_y = ny * (diameter - d)/2;
             x -= correct_x;
