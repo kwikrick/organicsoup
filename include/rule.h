@@ -25,5 +25,20 @@ struct Rule
         
     };
 
+    std::string toText() const {
+        return std::format("{}{}{}{}{}->{}{}{}{}{}",
+            atom_type1,
+            before_state1,
+            before_bonded?"":"+",
+            atom_type2,
+            before_state2,
+            atom_type1,
+            after_state1,
+            after_bonded?"":"+",
+            atom_type2,
+            after_state2
+        );
+    }
+
 
 };

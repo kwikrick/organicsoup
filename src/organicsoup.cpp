@@ -314,112 +314,92 @@ private:
             ImGui::PopItemWidth(); 
 
             ImGui::SeparatorText("Rules");
+
+            static const char* atom_type_items[] = { "a","b","c","d","e","f"};
+            static const char* atom_state_items[] = { "0","1","2","3","4","5","6","7","8","9"}; 
+
+            // new rule
+            ImGui::PushItemWidth(50);
+            static int atom_type1 = 0;
+            ImGui::Combo("##type1", &atom_type1, atom_type_items, IM_ARRAYSIZE(atom_type_items));     
+            ImGui::SameLine();         
+            static int before_state_1 = 0;
+            ImGui::Combo("##before1", &before_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+            ImGui::SameLine();
+            static bool bonded_before = false;
+            ImGui::Checkbox("##bonded_before", &bonded_before);
+            ImGui::SameLine();
+            static int atom_type2 = 0;
+            ImGui::Combo("##type2", &atom_type2, atom_type_items, IM_ARRAYSIZE(atom_type_items));    
+            ImGui::SameLine();      
+            static int before_state_2 = 0;
+            ImGui::Combo("##before2", &before_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+            ImGui::SameLine(); 
+            ImGui::Text("->");
+            ImGui::SameLine();  
+            static int after_state_1 = 0;
+            ImGui::Combo("##after1", &after_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+            ImGui::SameLine();
+            static bool bonded_after = true;
+            ImGui::Checkbox("##bonded_after", &bonded_after);
+            ImGui::SameLine();
+            static int after_state_2 = 0;
+            ImGui::Combo("##after2", &after_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+            ImGui::PopItemWidth();
+
+
+            if (ImGui::Button("Add Rule")) {
+                rules.push_back(std::make_unique<Rule>('a'+atom_type1, before_state_1, bonded_before, 'a'+atom_type2, before_state_2, 
+                                                       after_state_1, bonded_after, after_state_2));
+            }
+
             for (auto& rule: rules) {
                 ImGui::PushID(rule.get());
                 ImGui::PushItemWidth(50);
 
-                const char* atom_type_items[] = { "a","b","c","d","e","f"};
-                const char* atom_state_items[] = { "0","1","2","3","4","5","6","7","8","9"}; 
                 // delete button
                 if (ImGui::Button("X")) {
+                    atom_type1 = rule->atom_type1 - 'a';
+                    atom_type2 = rule->atom_type2 - 'a';
+                    before_state_1 = rule->before_state1;
+                    before_state_2 = rule->before_state2;
+                    after_state_1 = rule->after_state1;
+                    after_state_2 = rule->after_state2;
+                    bonded_before = rule->before_bonded;
+                    bonded_after = rule->after_bonded;
                     rules.erase(std::remove(rules.begin(), rules.end(), rule), rules.end());
                     ImGui::PopID();
                     ImGui::PopItemWidth();
                     break;
                 }
                 ImGui::SameLine();
-                // atom 1 type
-                {
-                    static int current_item_atom1 = 0;
-                    current_item_atom1 = rule->atom_type1 - 'a';
-                    ImGui::Combo("##type1", &current_item_atom1, atom_type_items, IM_ARRAYSIZE(atom_type_items));
-                    rule->atom_type1 = 'a' + current_item_atom1;
-                }
-                ImGui::SameLine();
-                // atom 1 before state 
-                {
-                    static int current_item_before_state_1 = 0;
-                    current_item_before_state_1 = rule->before_state1;
-                    ImGui::Combo("##before1", &current_item_before_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
-                    rule->before_state1 = current_item_before_state_1;
-                }
-                ImGui::SameLine();
-                {
-                    static bool current_bonded_before = false;
-                    current_bonded_before = rule->before_bonded;
-                    ImGui::Checkbox("##bonded_before", &current_bonded_before);
-                    rule->before_bonded = current_bonded_before;
-                }
-                ImGui::SameLine();
-                // atom 2 type
-                {
-                    static int current_item_atom2 = 0;
-                    current_item_atom2 = rule->atom_type2 - 'a';
-                    ImGui::Combo("##type2", &current_item_atom2, atom_type_items, IM_ARRAYSIZE(atom_type_items));
-                    rule->atom_type2 = 'a' + current_item_atom2;
-                }
-                ImGui::SameLine();
-                // atom 2 before state 
-                {
-                    static int current_item_before_state_2 = 0;
-                    current_item_before_state_2 = rule->before_state2;
-                    ImGui::Combo("##before2", &current_item_before_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
-                    rule->before_state2 = current_item_before_state_2;
-                }
-                ImGui::SameLine();
-                ImGui::Text("->");
-                ImGui::SameLine();
-                // atom 1 after state 
-                {
-                    static int current_item_after_state_1 = 0;
-                    current_item_after_state_1 = rule->after_state1;
-                    ImGui::Combo("##after1", &current_item_after_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
-                    rule->after_state1 = current_item_after_state_1;
-                }
-                ImGui::SameLine();
-                {
-                    static bool current_bonded_after = false;
-                    current_bonded_after = rule->after_bonded;
-                    ImGui::Checkbox("##bonded_after", &current_bonded_after);
-                    rule->after_bonded = current_bonded_after;
-                }
-                ImGui::SameLine();
-                // atom 2 after state 
-                {
-                    static int current_item_after_state_2 = 0;
-                    current_item_after_state_2 = rule->after_state2;
-                    ImGui::Combo("##after2", &current_item_after_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
-                    rule->after_state2 = current_item_after_state_2;
-                }
-               
+                ImGui::Text("%s",rule->toText().c_str());                  
                 ImGui::PopItemWidth();
                 ImGui::PopID();
             }
-        }
-        if (ImGui::Button("Add Rule")) {
-            add_rule();
-        }
-        if (ImGui::CollapsingHeader("Physics Parameters")) {
-            ImGui::SliderFloat("Temperature", &params.temp, 0.0f, 1.0f);
-            ImGui::SliderFloat("Friction", &params.friction, 0.0f, 1.0f);
-            ImGui::SliderFloat("Collision Elasticity", &params.collision_elasticity, 0.0f, 1.0f);
-            //ImGui::SliderFloat("Atom Radius", &params.atom_radius, 1.0f, 100.0f);
-            ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 100.0f);
-            ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 100.0f);
-            ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 100.0f);
-            ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
-        }
-      
-        if (ImGui::CollapsingHeader("Statistics")) {
-            ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
-            ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
-            ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
-            ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
-            ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
-            ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
-            ImGui::LabelText("Draw duration (ms)", "%f", debug_draw_duration * 1000);
-            ImGui::LabelText("Average FPS", "%f", debug_average_fps);
-            ImGui::SliderInt("Frame Delay (ms)", &frame_delay, 0, 16, "%d ms");
+        
+            if (ImGui::CollapsingHeader("Physics Parameters")) {
+                ImGui::SliderFloat("Temperature", &params.temp, 0.0f, 1.0f);
+                ImGui::SliderFloat("Friction", &params.friction, 0.0f, 1.0f);
+                ImGui::SliderFloat("Collision Elasticity", &params.collision_elasticity, 0.0f, 1.0f);
+                //ImGui::SliderFloat("Atom Radius", &params.atom_radius, 1.0f, 100.0f);
+                ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 100.0f);
+                ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 100.0f);
+                ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 100.0f);
+                ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
+            }
+        
+            if (ImGui::CollapsingHeader("Statistics")) {
+                ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
+                ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
+                ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
+                ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
+                ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
+                ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
+                ImGui::LabelText("Draw duration (ms)", "%f", debug_draw_duration * 1000);
+                ImGui::LabelText("Average FPS", "%f", debug_average_fps);
+                ImGui::SliderInt("Frame Delay (ms)", &frame_delay, 0, 16, "%d ms");
+            }
         }
         ImGui::End();
     }
@@ -468,10 +448,6 @@ private:
                 spacemap->update_atom(atoms.back());
             }
         }
-    }
-
-    void add_rule() {
-        rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 0, true, 0));
     }
 
     // ----- variables ------
