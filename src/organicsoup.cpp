@@ -58,16 +58,31 @@ public:
     }
 
     void frame() {
+
+        auto clock_start = std::chrono::high_resolution_clock::now();
+
         handle_events();
         if (!paused) {
-            for (int i=0;i<iterations_per_frame;++i) {
-                update();
-            }
-        } else { 
-            debug_update_duration = 0;
+            update_iterative();
         }
         draw();
-        SDL_Delay(frame_delay);
+
+        auto clock_finished = std::chrono::high_resolution_clock::now();
+
+
+        // delay
+        std::chrono::duration<float> busy_duration = clock_finished - clock_start;
+        float busy_ms = busy_duration.count() * 1000; 
+        if (busy_ms < minimum_frame_time_ms) {
+            SDL_Delay(minimum_frame_time_ms - busy_ms);
+        }
+
+        // calculate FPS
+        std::chrono::duration<float> frame_duration = clock_start - last_frame_clock;
+        last_frame_clock = clock_start;
+        float frame_time = frame_duration.count(); 
+        float fps = 1.0f / frame_time;
+        debug_average_fps = debug_average_fps * 0.9f + fps * 0.1f;
     }
 
     void handle_events() {
@@ -108,11 +123,20 @@ public:
     bool quit_requested() const {
         return quit;
     }
-               
-    void update() {
 
+    void update_iterative() {
         auto clock_start = std::chrono::high_resolution_clock::now();
 
+        for (int i=0;i<iterations_per_frame;++i) {
+            update();
+        }
+        
+        auto clock_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> duration = clock_end - clock_start;
+        debug_update_duration = duration.count();
+    }
+               
+    void update() {
         debug_num_pairs_tested = 0;
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
@@ -162,11 +186,6 @@ public:
             atom->update();
             spacemap->update_atom(atom);
         }
-
-        // log time
-        auto clock_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<float> duration = clock_end - clock_start;
-        debug_update_duration = duration.count();
     }
 
     void draw() {
@@ -189,14 +208,6 @@ public:
         std::chrono::duration<float> duration = clock_end - clock_start;
         debug_draw_duration = duration.count();
 
-        // calculate FPS
-        std::chrono::duration<float> frame_duration = clock_start- last_frame_clock;
-        float frame_time = frame_duration.count(); 
-        float fps = 1.0f / frame_time;
-        debug_average_fps = debug_average_fps * 0.9f + fps * 0.1f;
-        last_frame_clock = clock_start;
-
-        
     }
     
 private:
@@ -398,7 +409,7 @@ private:
                 ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
                 ImGui::LabelText("Draw duration (ms)", "%f", debug_draw_duration * 1000);
                 ImGui::LabelText("Average FPS", "%f", debug_average_fps);
-                ImGui::SliderInt("Frame Delay (ms)", &frame_delay, 0, 16, "%d ms");
+                ImGui::SliderInt("Minimum Frame Time (ms)", &minimum_frame_time_ms, 0, 16, "%d ms");
             }
         }
         ImGui::End();
@@ -453,7 +464,7 @@ private:
 
     bool quit = false;
     bool paused = false;
-    int frame_delay = 16; // ms, ~60 fps
+    int minimum_frame_time_ms = 16; // ms, ~60 fps
     int iterations_per_frame = 1; // how many physics iterations per frame
 
     SDL_Window* window = nullptr;
