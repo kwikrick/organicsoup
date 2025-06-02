@@ -149,17 +149,17 @@ public:
         for (auto& pair: pairs) {
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
-            atom1->collide(*atom2,params);      // Bug: collide can move atom; spacemap is not updated
+            atom1->collide(*atom2);      // Bug: collide can move atom; spacemap is not updated
         }
 
         // enfore bonds
         for (auto& bond: bonds) {
-            bond->update(params);
+            bond->update();
         }
 
         // move atoms
         for (auto& atom: atoms) {
-            atom->update(params);
+            atom->update();
             spacemap->update_atom(atom);
         }
 
@@ -217,7 +217,7 @@ private:
         }
 
         for (auto& bond: bonds) {
-                bond->draw(*renderer, params, scale, offset_x, offset_y);
+                bond->draw(*renderer, scale, offset_x, offset_y);
         }
 
     }
@@ -246,7 +246,7 @@ private:
         bool bonded = (bonds_it != bonds.end());
         if (rule.after_bonded != bonded) {
             if (rule.after_bonded) {
-                bonds.push_back(std::make_shared<Bond>(atom1, atom2));
+                bonds.push_back(std::make_shared<Bond>(params,atom1, atom2));
             } else {
                 bonds.erase(bonds_it);
             }
@@ -411,20 +411,19 @@ private:
     }
 
     void resize() {
-        auto off_world = [&](std::shared_ptr<Atom> atom){ 
-            return atom->x < 0 || atom->x > params.space_width || atom->y < 0 || atom->y > params.space_height;
-        };
         spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);
         std::vector<std::shared_ptr<Bond>> bonds_to_remove;
         for (auto& bond: bonds) {
-            if (off_world(bond->atom1) || off_world(bond->atom2)) {
+            if (bond->atom1->off_world() || bond->atom2->off_world()) {
                 bonds_to_remove.push_back(bond);        
             }
         }
         for (auto& bond: bonds_to_remove) {
             bonds.erase(std::remove(bonds.begin(),bonds.end(),bond),bonds.end());
         }
-
+        
+        auto off_world = [&](std::shared_ptr<Atom> atom){return atom->off_world();};
+            
         atoms.erase(std::remove_if(atoms.begin(),atoms.end(),off_world),atoms.end());
         for (auto& atom: atoms) {
             atom->spacemap_index = -1;
@@ -444,7 +443,7 @@ private:
                 float x=randf(0,params.space_width);
                 float y=randf(0,params.space_height);
                 char type = 'a' + color;
-                atoms.push_back(std::make_shared<Atom>(x,y,type,0));
+                atoms.push_back(std::make_shared<Atom>(params,x,y,type,0));
                 spacemap->update_atom(atoms.back());
             }
         }

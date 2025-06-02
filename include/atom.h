@@ -6,14 +6,14 @@
 class Atom 
 {
 public:
-    Atom(float x, float y, char type, int state)
-        :x(x),y(y),type(type),state(state)
+    Atom(const PhysicsParameters& params, float x, float y, char type, int state)
+        :params(params),x(x),y(y),type(type),state(state)
     {
         //vx += randf(-10,10);
         //vy += randf(-10,10);      
     };
     
-    void update(const PhysicsParameters& params) {        // TODO: add delta parameter
+    void update() {        // TODO: add delta parameter
         // Brownian motion
         vx += randf(-params.temp,params.temp);
         vy += randf(-params.temp,params.temp);      
@@ -21,13 +21,13 @@ public:
         vy -= (vy * params.friction);
         x += vx;
         y += vy;
-        if (x<0 && vx<0) {vx=-vx; x+=vx/2;}
-        if (y<0 && vy<0) {vy=-vy; y+=vy/2;}
-        if (x>params.space_width && vx>0) {vx=-vx; x+=vx/2;}
-        if (y>params.space_height && vy>0) {vy=-vy; y+=vy/2;}
+        if (x<params.atom_radius && vx<0) {vx=-vx; x=params.atom_radius+vx/2;}
+        if (y<params.atom_radius && vy<0) {vy=-vy; y=params.atom_radius+vy/2;}
+        if (x>params.space_width-params.atom_radius && vx>0) {vx=-vx; x=params.space_width-params.atom_radius+vx/2;}
+        if (y>params.space_height-params.atom_radius && vy>0) {vy=-vy; y=params.space_height-params.atom_radius+vy/2;}
     }
 
-    void collide(Atom& other, const PhysicsParameters& params) {
+    void collide(Atom& other) {
         float dx = other.x - x;
         float dy = other.y - y;
         float d2 = dx*dx + dy*dy;
@@ -58,7 +58,16 @@ public:
             other.y += correct_y;
         }
     };
+
+    bool off_world() { 
+            return x < params.atom_radius 
+                || x > params.space_width-params.atom_radius 
+                || y < params.atom_radius 
+                || y > params.space_height - params.atom_radius;
+    };
     
+
+    const PhysicsParameters& params;
     float x;
     float y;
     float vx = 0;

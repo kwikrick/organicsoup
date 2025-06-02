@@ -9,13 +9,14 @@ struct Bond {
 
     std::shared_ptr<Atom> atom1;
     std::shared_ptr<Atom> atom2;
+    const PhysicsParameters& params;
     
-    Bond(std::shared_ptr<Atom> atom1, std::shared_ptr<Atom> atom2)
-        :atom1(atom1), atom2(atom2)
+    Bond(const PhysicsParameters& params,std::shared_ptr<Atom> atom1, std::shared_ptr<Atom> atom2)
+        :params(params),atom1(atom1),atom2(atom2)
     {
     };
 
-    void update(const PhysicsParameters& params) {
+    void update() {
         float dx = atom2->x - atom1->x;
         float dy = atom2->y - atom1->y;
         float dist = sqrt(dx*dx + dy*dy);
@@ -26,7 +27,7 @@ struct Bond {
         atom2->vy -= force * dy / dist;
     };
 
-    void draw(SDL_Renderer& renderer, const PhysicsParameters& params, float scale, float offset_x, float offset_y) const {
+    void draw(SDL_Renderer& renderer, float scale, float offset_x, float offset_y) const {
         SDL_SetRenderDrawColor(&renderer, 255, 255, 255, 255);
         float dx = atom2->x - atom1->x;
         float dy = atom2->y - atom1->y;
