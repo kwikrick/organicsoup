@@ -73,20 +73,21 @@ struct SpaceMap
     }
    
     using AtomPair = std::pair<std::shared_ptr<Atom>, std::shared_ptr<Atom>>;
-    std::vector<AtomPair> get_pairs(float radius) const {
+    std::vector<AtomPair> get_pairs(float distance) const {
         std::vector<AtomPair> pairs;
-        int rx = static_cast<int>(radius / xstep)+1;
-        int ry = static_cast<int>(radius / ystep)+1;
+        int rx = static_cast<int>(distance / xstep)+1;
+        int ry = static_cast<int>(distance / ystep)+1;
         for (int ix1 = 0; ix1 < nx; ++ix1) {
             for (int iy1 = 0; iy1 < ny; ++iy1) {
                 int index1 = grid_coord_to_index(ix1, iy1);
-                if (cells[index1].empty()) continue;
                 auto cell1 = cells[index1];
-                for (int ix2 = ix1; ix2 <= ix1+rx; ++ix2) {
-                    if (ix2 >= nx) break;
-                    for (int iy2 = iy1; iy2 <= iy1+ry; ++iy2) {
-                        if (iy2 >= ny) break;
+                if (cell1.empty()) continue;
+                for (int ix2 = ix1-rx; ix2 <= ix1+rx; ++ix2) {
+                    if (ix2<0 || ix2 >= nx) continue;
+                    for (int iy2 = iy1-ry; iy2 <= iy1+ry; ++iy2) {
+                        if (iy2<0 || iy2 >= ny) continue;
                         int index2 = grid_coord_to_index(ix2, iy2);
+                        if (index2<index1) continue;   // avoid duplicates
                         auto cell2 = cells[index2];
                         if (cell2.empty()) continue;
                         for (auto& atom1 : cell1) {
@@ -94,7 +95,7 @@ struct SpaceMap
                                 if (atom1 != atom2) {
                                     float dx = atom1->x - atom2->x;
                                     float dy = atom1->y - atom2->y;
-                                    if (dx * dx + dy * dy < radius * radius) {
+                                    if (dx * dx + dy * dy < distance * distance) {
                                         pairs.push_back(std::make_pair(atom1,atom2));
                                     }
                                 }
