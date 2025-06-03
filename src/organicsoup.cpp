@@ -172,16 +172,16 @@ public:
         });
         bonds.erase(break_bonds, bonds.end());
 
+        // enfore bonds
+        for (auto& bond: bonds) {
+            bond->update();
+        }
+        
         // collide
         for (auto& pair: pairs) {
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
-            atom1->collide(*atom2);      // Bug: collide can move atom; spacemap is not updated
-        }
-
-        // enfore bonds
-        for (auto& bond: bonds) {
-            bond->update();
+            atom1->collide(*atom2);
         }
 
         // move atoms
