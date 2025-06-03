@@ -26,6 +26,8 @@ public:
         color_map['e'] = {255,0,255,255};
         color_map['f'] = {255,255,0,255};
 
+        // color_map['x'] = {128,128,128,255};     // debug
+
     }
     ~AtomRenderer() {
         for (auto& [key, texture] : texture_map) {
@@ -39,13 +41,18 @@ public:
         TypeState ts {atom.type, atom.state};
         SDL_Texture* texture = nullptr;
 
+        //debug
+        //if (atom.debug_missed) {
+        //    ts.type = 'x';
+        //}
+
         auto it = texture_map.find(ts);
         if (it != texture_map.end()) {
             texture = it->second;
         }
         else {
-            std::cout << "creating texture for " << atom.type << atom.state << "\n";
-            SDL_Surface* surface = create_surface(atom);
+            std::cout << "creating texture for " << ts.type << ts.state << "\n";
+            SDL_Surface* surface = create_surface(ts.type, ts.state);
             texture = SDL_CreateTextureFromSurface(&renderer, surface);
             SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
             SDL_FreeSurface(surface);
@@ -57,10 +64,10 @@ public:
         SDL_RenderCopyF(&renderer, texture, nullptr, &tgt_rect); 
     }
 
-    SDL_Surface* create_surface(const Atom& atom) {
+    SDL_Surface* create_surface(char type, int state) {
         
         // set color from type
-        SDL_Color color = color_map[atom.type];
+        SDL_Color color = color_map[type];
                 
         // -- create surface and renderer
         
@@ -112,7 +119,7 @@ public:
         TTF_Font* font = TTF_OpenFont("assets/FreeSans.ttf", 16);
         if (!font) { std::cout << "font not found\n"; return surface;}
         
-        std::string txt = std::format("{}{}",atom.type,atom.state);
+        std::string txt = std::format("{}{}",type,state);
         
         SDL_Color fg_color {
             static_cast<Uint8>(255-color.r),
