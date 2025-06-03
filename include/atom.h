@@ -21,13 +21,20 @@ public:
         vy -= (vy * params.friction);
         x += vx;
         y += vy;
+        if (correction_n>0) {
+            x += correction_x / correction_n;
+            y += correction_y / correction_n;
+            correction_x = 0;
+            correction_y = 0;
+            correction_n = 0;
+        }
         if (x<params.atom_radius && vx<0) {vx=-vx; x=params.atom_radius+vx/2;}
         if (y<params.atom_radius && vy<0) {vy=-vy; y=params.atom_radius+vy/2;}
         if (x>params.space_width-params.atom_radius && vx>0) {vx=-vx; x=params.space_width-params.atom_radius+vx/2;}
         if (y>params.space_height-params.atom_radius && vy>0) {vy=-vy; y=params.space_height-params.atom_radius+vy/2;}
     }
 
-    void collide(Atom& other) {
+    bool collide(Atom& other) {
         float dx = other.x - x;
         float dy = other.y - y;
         float d2 = dx*dx + dy*dy;
@@ -52,11 +59,15 @@ public:
             // move apart
             float correct_x = nx * (diameter - d)/2; 
             float correct_y = ny * (diameter - d)/2;
-            x -= correct_x;
-            y -= correct_y;
-            other.x += correct_x;
-            other.y += correct_y;
+            correction_n += 1;
+            correction_x -= correct_x;
+            correction_y -= correct_y;
+            other.correction_n += 1;
+            other.correction_x += correct_x;
+            other.correction_y += correct_y;
+            return true;
         }
+        return false;
     };
 
     bool off_world() { 
@@ -67,13 +78,19 @@ public:
     };
     
 
+    // variables
+    
+    char type;
+    int state;
+
     const PhysicsParameters& params;
     float x;
     float y;
     float vx = 0;
     float vy = 0;
-    char type;
-    int state;
+    float correction_x = 0;
+    float correction_y = 0;
+    int correction_n = 0;
     
     int spacemap_index = -1; // index in the spacemap, -1 if not in spacemap
     
