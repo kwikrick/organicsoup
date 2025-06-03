@@ -141,7 +141,10 @@ public:
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
 
-        auto pairs = spacemap->get_pairs(params.bonding_start_distance);
+        float pair_distance = fmax(params.bonding_start_distance, params.atom_radius*2);
+        auto pairs = spacemap->get_pairs(pair_distance);
+
+        // try rules 
         for (auto& pair: pairs) {
             debug_num_pairs_tested++;
             auto& atom1 = pair.first;
