@@ -163,13 +163,6 @@ public:
             }
         }
 
-        // break bonds
-        // for (auto it = break_bonds; it != bonds.end(); ++it) {
-        //     auto bond = *it;
-        //     bond->atom1->state = 0;
-        //     bond->atom2->state = 0;
-        // }
-
         auto broken = [&](const std::shared_ptr<Bond>& bond) {
             float dx = bond->atom2->x - bond->atom1->x;
             float dy = bond->atom2->y - bond->atom1->y;
@@ -263,6 +256,9 @@ private:
     
     void apply_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
     {
+        if (atom1->num_bonds >= params.max_bonds_per_atom) return;
+        if (atom2->num_bonds >= params.max_bonds_per_atom) return;
+        
         atom1->state = rule.after_state1;
         atom2->state = rule.after_state2;
         auto bonds_it = std::find_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
@@ -413,6 +409,7 @@ private:
                 ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 100.0f);
                 ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 100.0f);
                 ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
+                ImGui::SliderInt("Max bonds per atom", &params.max_bonds_per_atom, 0,16);
             }
         
             if (ImGui::CollapsingHeader("Statistics")) {
@@ -498,7 +495,7 @@ private:
     std::vector<std::shared_ptr<Atom>> atoms;
     std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
-
+   
     // Performance variables
     // TODO: rename debug->performance; or put in a struct
     int debug_num_pairs_tested = 0;

@@ -14,7 +14,14 @@ struct Bond {
     Bond(const PhysicsParameters& params,std::shared_ptr<Atom> atom1, std::shared_ptr<Atom> atom2)
         :params(params),atom1(atom1),atom2(atom2)
     {
+        atom1->num_bonds+=1;
+        atom2->num_bonds+=1;
     };
+
+    ~Bond() {
+        atom1->num_bonds-=1;
+        atom2->num_bonds-=1;
+    }
 
     void update() {
         float dx = atom2->x - atom1->x;

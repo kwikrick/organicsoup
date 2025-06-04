@@ -15,4 +15,6 @@ struct PhysicsParameters
     float bonding_start_distance = 33.0f;   // radius to start bonding atoms
     float bonding_end_distance = 48.0f;     // radius to break bonding atoms
     float bonding_strength = 0.1f;       // strength of bonding spring between atoms
+
+    int max_bonds_per_atom = 6;
 };

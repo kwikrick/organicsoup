@@ -93,6 +93,7 @@ public:
     int correction_n = 0;
     
     int spacemap_index = -1; // index in the spacemap, -1 if not in spacemap
+    int num_bonds = 0;
     
 };
 
