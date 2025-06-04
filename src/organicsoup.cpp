@@ -164,14 +164,26 @@ public:
         }
 
         // break bonds
-        auto break_bonds = std::remove_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
+        // for (auto it = break_bonds; it != bonds.end(); ++it) {
+        //     auto bond = *it;
+        //     bond->atom1->state = 0;
+        //     bond->atom2->state = 0;
+        // }
+
+        auto broken = [&](const std::shared_ptr<Bond>& bond) {
             float dx = bond->atom2->x - bond->atom1->x;
             float dy = bond->atom2->y - bond->atom1->y;
             float dist = sqrt(dx*dx + dy*dy);
             return dist > params.bonding_end_distance;
-        });
-        bonds.erase(break_bonds, bonds.end());
-
+        };
+        for (auto bond: bonds) {
+            if (broken(bond)) {
+                bond->atom1->state = 0;
+                bond->atom2->state = 0;
+            }
+        };
+        bonds.erase(std::remove_if(bonds.begin(), bonds.end(), broken), bonds.end());
+        
         // enfore bonds
         for (auto& bond: bonds) {
             bond->update();
