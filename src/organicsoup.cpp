@@ -177,6 +177,7 @@ public:
             }
         }
 
+        using AtomPairBondPair = std::pair<const AtomPair,std::shared_ptr<Bond>>;
         auto broken = [&](AtomPairBondPair& item) {
             auto& bond = item.second;
             float dx = bond->atom2->x - bond->atom1->x;
@@ -524,8 +525,7 @@ private:
     //std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
 
-
-    using AtomPairBondPair = std::pair<const AtomPair,std::shared_ptr<Bond>>;
+    // TODO: instead of this map, we could use an unordered set of bonds with a proper hash and compare for bonds...
     std::unordered_map<AtomPair,std::shared_ptr<Bond>> atompair2bond;
 
     
