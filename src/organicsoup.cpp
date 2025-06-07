@@ -245,6 +245,7 @@ private:
     {
         if (atom1->type != rule.atom_type1 || atom2->type != rule.atom_type2) return false;
         if (atom1->state != rule.before_state1 || atom2->state != rule.before_state2) return false;
+        // TODO: this is expensive! quadratic cost in #bonds!
         auto bonds_it = std::find_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
             return (bond->atom1 == atom1 && bond->atom2 == atom2) 
                 || (bond->atom1 == atom2 && bond->atom2 == atom1);
@@ -256,18 +257,20 @@ private:
     
     void apply_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
     {
-        if (atom1->num_bonds >= params.max_bonds_per_atom) return;
-        if (atom2->num_bonds >= params.max_bonds_per_atom) return;
-        
         atom1->state = rule.after_state1;
         atom2->state = rule.after_state2;
+        // TODO: this is expensive! quadratic cost in #bonds!
         auto bonds_it = std::find_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
             return (bond->atom1 == atom1 && bond->atom2 == atom2) 
                 || (bond->atom1 == atom2 && bond->atom2 == atom1);
-        });
+        }); 
         bool bonded = (bonds_it != bonds.end());
         if (rule.after_bonded != bonded) {
             if (rule.after_bonded) {
+                
+                if (atom1->num_bonds >= params.max_bonds_per_atom) return;
+                if (atom2->num_bonds >= params.max_bonds_per_atom) return;
+        
                 bonds.push_back(std::make_shared<Bond>(params,atom1, atom2));
             } else {
                 bonds.erase(bonds_it);
