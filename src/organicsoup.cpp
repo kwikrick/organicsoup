@@ -14,6 +14,8 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <unordered_map>
+
 
 // my includes
 #include "atom.h"
@@ -28,9 +30,22 @@
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_opengl3.h"
 
+using AtomPair = std::pair<const Atom*, const Atom*>;
+template<>
+struct std::hash<AtomPair>
+{
+    std::size_t operator()(const AtomPair& pair) const noexcept
+    {
+        std::size_t h1 = (std::size_t)pair.first;
+        std::size_t h2 = (std::size_t)pair.second;
+        return h1 ^ (h2 << 1);
+    }
+};
 
 class Application {
 public:
+
+
     Application() {
         
         //  fixed size for now
@@ -104,7 +119,6 @@ public:
                     } else if (event.wheel.y < 0) {
                         scale /= 1.1f;
                     }
-                    // TODO: recompute offset_x and offset_y to keep the mouse position stable
                     int mouse_x, mouse_y;
                     SDL_GetMouseState(&mouse_x, &mouse_y);
                     offset_x -= (mouse_x - offset_x) * (scale / old_scale - 1);
@@ -163,23 +177,28 @@ public:
             }
         }
 
-        auto broken = [&](const std::shared_ptr<Bond>& bond) {
+        auto broken = [&](AtomPairBondPair& item) {
+            auto& bond = item.second;
             float dx = bond->atom2->x - bond->atom1->x;
             float dy = bond->atom2->y - bond->atom1->y;
             float dist = sqrt(dx*dx + dy*dy);
             return dist > params.bonding_end_distance;
         };
-        for (auto bond: bonds) {
-            if (broken(bond)) {
-                bond->atom1->state = 0;
-                bond->atom2->state = 0;
+        std::vector<AtomPair> to_remove;
+        for (auto item: atompair2bond) {
+            if (broken(item)) {
+                item.second->atom1->state = 0;
+                item.second->atom2->state = 0;
+                to_remove.push_back(item.first);
             }
         };
-        bonds.erase(std::remove_if(bonds.begin(), bonds.end(), broken), bonds.end());
-        
+        for (auto& pair: to_remove) {
+            atompair2bond.erase(pair);
+        }
+
         // enfore bonds
-        for (auto& bond: bonds) {
-            bond->update();
+        for (auto& item: atompair2bond) {
+            item.second->update();
         }
         
         // collide
@@ -235,22 +254,17 @@ private:
                 atom_renderer->draw(*atom, scale, offset_x, offset_y);
         }
 
-        for (auto& bond: bonds) {
-                bond->draw(*renderer, scale, offset_x, offset_y);
+        for (auto& item: atompair2bond) {
+                item.second->draw(*renderer, scale, offset_x, offset_y);
         }
 
     }
 
-    bool match_rule(const Rule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2) const
+    bool match_rule(const Rule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2)
     {
         if (atom1->type != rule.atom_type1 || atom2->type != rule.atom_type2) return false;
         if (atom1->state != rule.before_state1 || atom2->state != rule.before_state2) return false;
-        // TODO: this is expensive! quadratic cost in #bonds!
-        auto bonds_it = std::find_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
-            return (bond->atom1 == atom1 && bond->atom2 == atom2) 
-                || (bond->atom1 == atom2 && bond->atom2 == atom1);
-        });
-        bool bonded = (bonds_it != bonds.end());
+        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
         if (rule.before_bonded != bonded) return false;
         return true;
     };
@@ -259,25 +273,34 @@ private:
     {
         atom1->state = rule.after_state1;
         atom2->state = rule.after_state2;
-        // TODO: this is expensive! quadratic cost in #bonds!
-        auto bonds_it = std::find_if(bonds.begin(), bonds.end(), [&](const std::shared_ptr<Bond>& bond) {
-            return (bond->atom1 == atom1 && bond->atom2 == atom2) 
-                || (bond->atom1 == atom2 && bond->atom2 == atom1);
-        }); 
-        bool bonded = (bonds_it != bonds.end());
+        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
         if (rule.after_bonded != bonded) {
             if (rule.after_bonded) {
-                
                 if (atom1->num_bonds >= params.max_bonds_per_atom) return;
                 if (atom2->num_bonds >= params.max_bonds_per_atom) return;
-        
-                bonds.push_back(std::make_shared<Bond>(params,atom1, atom2));
+                add_bond(atom1, atom2);
             } else {
-                bonds.erase(bonds_it);
+                // 
+                atompair2bond.erase(make_atom_pair(atom1.get(),atom2.get()));
             }
         }
     };
     
+    AtomPair make_atom_pair(const Atom* atom1, const Atom* atom2)
+    {
+        const Atom* left = (atom1<atom2)?atom1:atom2;
+        const Atom* right = (atom1<atom2)?atom2:atom1;
+        return AtomPair(left,right);
+    }
+
+    std::shared_ptr<Bond> add_bond( std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2) 
+    {
+        auto pair = make_atom_pair(atom1.get(),atom2.get());
+        auto bond = std::make_shared<Bond>(params,atom1,atom2);        
+        atompair2bond[pair]=bond;
+        return bond;
+    }
+
     void imgui_setup() {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -417,7 +440,7 @@ private:
         
             if (ImGui::CollapsingHeader("Statistics")) {
                 ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
-                ImGui::LabelText("Number of bonds", "%d", (int)bonds.size());
+                ImGui::LabelText("Number of bonds", "%d", (int)atompair2bond.size());
                 ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
                 ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
                 ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
@@ -438,14 +461,16 @@ private:
 
     void resize() {
         spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);
-        std::vector<std::shared_ptr<Bond>> bonds_to_remove;
-        for (auto& bond: bonds) {
+        std::vector<AtomPair> to_remove;
+
+        for (auto& item: atompair2bond) {
+            auto& bond = item.second;
             if (bond->atom1->off_world() || bond->atom2->off_world()) {
-                bonds_to_remove.push_back(bond);        
+                to_remove.push_back(item.first);        
             }
         }
-        for (auto& bond: bonds_to_remove) {
-            bonds.erase(std::remove(bonds.begin(),bonds.end(),bond),bonds.end());
+        for (auto& pair: to_remove) {
+            atompair2bond.erase(pair);
         }
         
         auto off_world = [&](std::shared_ptr<Atom> atom){return atom->off_world();};
@@ -459,7 +484,7 @@ private:
     
     void restart() {
         atoms.clear();
-        bonds.clear();
+        atompair2bond.clear();
 
         // new spacemap for atom size and world size
         spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);
@@ -496,8 +521,14 @@ private:
     std::unique_ptr<SpaceMap> spacemap;
     std::unique_ptr<AtomRenderer> atom_renderer;
     std::vector<std::shared_ptr<Atom>> atoms;
-    std::vector<std::shared_ptr<Bond>> bonds;
+    //std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
+
+
+    using AtomPairBondPair = std::pair<const AtomPair,std::shared_ptr<Bond>>;
+    std::unordered_map<AtomPair,std::shared_ptr<Bond>> atompair2bond;
+
+    
    
     // Performance variables
     // TODO: rename debug->performance; or put in a struct
