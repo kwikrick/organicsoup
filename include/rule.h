@@ -40,5 +40,48 @@ struct Rule
         );
     }
 
+    bool match(const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2, bool bonded) const
+    {
+        char match_x = 0;
+        char match_y = 0;
 
+        if (atom_type1 == 'X') {
+            if (match_x == 0 || match_x == atom1->type)
+                match_x = atom1->type;
+            else {
+                return false;
+            }
+        }
+        else if (atom_type1 == 'Y') {
+            if (match_y == 0 || match_y == atom1->type)
+                match_y = atom1->type;
+            else {
+                return false;
+            }
+        }
+        else {
+             if (atom1->type != atom_type1) return false;
+        }
+        if (atom_type2 == 'X') {
+            if (match_x == 0 || match_x == atom2->type)
+                match_x = atom2->type;
+            else {
+                return false;
+            }
+        }
+        else if (atom_type2 == 'Y') {
+            if (match_y == 0 || match_y == atom2->type)
+                match_y = atom2->type;
+            else {
+                return false;
+            }
+        }
+        else {
+              if (atom2->type != atom_type2) return false;
+        }
+        if (atom1->state != before_state1 || atom2->state != before_state2) return false;
+        if (bonded != before_bonded) return false;
+        return true;
+    };
+    
 };

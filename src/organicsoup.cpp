@@ -100,6 +100,13 @@ public:
         debug_average_fps = debug_average_fps * 0.9f + fps * 0.1f;
     }
 
+    bool quit_requested() const {
+        return quit;
+    }
+
+private:
+    
+
     void handle_events() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -134,10 +141,7 @@ public:
         }
      }
 
-    bool quit_requested() const {
-        return quit;
-    }
-
+   
     void update_iterative() {
         auto clock_start = std::chrono::high_resolution_clock::now();
 
@@ -238,8 +242,6 @@ public:
 
     }
     
-private:
-    
     void draw_world() {
 
         int window_width, window_height;
@@ -263,11 +265,8 @@ private:
 
     bool match_rule(const Rule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2)
     {
-        if (atom1->type != rule.atom_type1 || atom2->type != rule.atom_type2) return false;
-        if (atom1->state != rule.before_state1 || atom2->state != rule.before_state2) return false;
         bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
-        if (rule.before_bonded != bonded) return false;
-        return true;
+        return rule.match(atom1, atom2, bonded);
     };
     
     void apply_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
@@ -364,8 +363,15 @@ private:
 
             ImGui::SeparatorText("Rules");
 
-            static const char* atom_type_items[] = { "a","b","c","d","e","f"};
+            static const char* atom_type_items[] = { "a","b","c","d","e","f", "X", "Y"};
             static const char* atom_state_items[] = { "0","1","2","3","4","5","6","7","8","9"}; 
+            auto atom_type_from_index = [&](int index)->char {return atom_type_items[index][0];};
+            auto atom_type_to_index = [&](char type)->int {
+                 for (int i=0;i<IM_ARRAYSIZE(atom_type_items);++i) {
+                    if (atom_type_items[i][0]==type) return i;
+                 }
+                 return 0;
+            };
 
             // new rule
             ImGui::PushItemWidth(50);
@@ -398,7 +404,8 @@ private:
 
 
             if (ImGui::Button("Add Rule")) {
-                rules.push_back(std::make_unique<Rule>('a'+atom_type1, before_state_1, bonded_before, 'a'+atom_type2, before_state_2, 
+                rules.push_back(std::make_unique<Rule>(atom_type_from_index(atom_type1), before_state_1, bonded_before,
+                                                       atom_type_from_index(atom_type2), before_state_2, 
                                                        after_state_1, bonded_after, after_state_2));
             }
 
@@ -408,8 +415,8 @@ private:
 
                 // delete button
                 if (ImGui::Button("X")) {
-                    atom_type1 = rule->atom_type1 - 'a';
-                    atom_type2 = rule->atom_type2 - 'a';
+                    atom_type1 = atom_type_to_index(rule->atom_type1);
+                    atom_type2 = atom_type_to_index(rule->atom_type2);
                     before_state_1 = rule->before_state1;
                     before_state_2 = rule->before_state2;
                     after_state_1 = rule->after_state1;
