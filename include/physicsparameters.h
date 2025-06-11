@@ -29,7 +29,7 @@ struct PhysicsParameters
     float bonding_distance(BondDistance distance) const {
         switch(distance) {
             case BondDistance::Near: return bonding_start_distance;
-            case BondDistance::Middle: return (bonding_end_distance+bonding_end_distance)/2;
+            case BondDistance::Middle: return (bonding_start_distance+bonding_end_distance)/2;
             case BondDistance::Far: return bonding_end_distance;
             default: return 0;
         }

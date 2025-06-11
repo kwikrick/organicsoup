@@ -84,7 +84,9 @@ struct BondRule
         else {
               if (atom2->type != atom_type2) return false;
         }
+
         if (atom1->state != before_state1 || atom2->state != before_state2) return false;
+        
         return true;
     };
     

@@ -159,7 +159,7 @@ private:
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
 
-        float pair_distance = fmax(params.bonding_start_distance, params.atom_radius*2);
+        float pair_distance = fmax(params.bonding_end_distance, params.atom_radius*2);
         auto pairs = spacemap->get_pairs(pair_distance);
 
         // try rules 
@@ -183,7 +183,9 @@ private:
                     bond->bonding_distance = distance;
                 }
                 else {
-                    add_bond(atom1, atom2, distance);
+                    if (atom1->num_bonds < params.max_bonds_per_atom && atom2->num_bonds < params.max_bonds_per_atom) {
+                        add_bond(atom1, atom2, distance);
+                    }
                 }
             }
             else {
