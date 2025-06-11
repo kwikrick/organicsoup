@@ -201,13 +201,13 @@ private:
             float dx = bond->atom2->x - bond->atom1->x;
             float dy = bond->atom2->y - bond->atom1->y;
             float dist = sqrt(dx*dx + dy*dy);
-            return dist > params.bonding_end_distance;
+            return dist > params.breaking_distance(bond->bonding_distance);
         };
         std::vector<AtomPair> to_remove;
         for (auto item: atompair2bond) {
             if (broken(item)) {
-                item.second->atom1->state = 0;
-                item.second->atom2->state = 0;
+                //item.second->atom1->state = 0;
+                //item.second->atom2->state = 0;
                 to_remove.push_back(item.first);
             }
         };
