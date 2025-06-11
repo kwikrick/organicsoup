@@ -167,16 +167,28 @@ private:
             debug_num_pairs_tested++;
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
+            bool match = false;
+            BondDistance distance = BondDistance::Far; 
             for (auto& rule: bond_rules) {
                 debug_num_rules_tested ++;
-                if (match_rule(*rule, atom1, atom2)) {
-                    apply_rule(*rule, atom1, atom2);
-                    debug_num_rules_applied++;
-                
+                if (rule->match(atom1, atom2) ||  rule->match(atom2, atom1)) {
+                    match = true;
+                    distance = rule->bond_distance;
                 }
-                else if (match_rule(*rule, atom2, atom1)) {
-                    apply_rule(*rule, atom2, atom1);
-                    debug_num_rules_applied++;
+            }
+            bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
+            if (match) {
+                if (bonded) {
+                    auto bond = atompair2bond.at(make_atom_pair(atom1.get(),atom2.get()));
+                    bond->bonding_distance = distance;
+                }
+                else {
+                    add_bond(atom1, atom2, distance);
+                }
+            }
+            else {
+                if (bonded) {
+                    atompair2bond.erase(make_atom_pair(atom1.get(), atom2.get()));
                 }
             }
         }
@@ -262,29 +274,6 @@ private:
         }
 
     }
-
-    bool match_rule(const BondRule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2)
-    {
-        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
-        return rule.match(atom1, atom2, bonded);
-    };
-    
-    void apply_rule(const BondRule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
-    {
-        atom1->state = rule.after_state1;
-        atom2->state = rule.after_state2;
-        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
-        if (rule.after_bonded != bonded) {
-            if (rule.after_bonded) {
-                if (atom1->num_bonds >= params.max_bonds_per_atom) return;
-                if (atom2->num_bonds >= params.max_bonds_per_atom) return;
-                add_bond(atom1, atom2);
-            } else {
-                // 
-                atompair2bond.erase(make_atom_pair(atom1.get(),atom2.get()));
-            }
-        }
-    };
     
     AtomPair make_atom_pair(const Atom* atom1, const Atom* atom2)
     {
@@ -293,10 +282,10 @@ private:
         return AtomPair(left,right);
     }
 
-    std::shared_ptr<Bond> add_bond( std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2) 
+    std::shared_ptr<Bond> add_bond( std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2, BondDistance distance) 
     {
         auto pair = make_atom_pair(atom1.get(),atom2.get());
-        auto bond = std::make_shared<Bond>(params,atom1,atom2);        
+        auto bond = std::make_shared<Bond>(params,atom1,atom2,distance);        
         atompair2bond[pair]=bond;
         return bond;
     }
@@ -372,7 +361,18 @@ private:
                  }
                  return 0;
             };
-
+            static const char* bond_distance_names[] = { "near", "middle", "far" }; 
+            static BondDistance bond_distance_items[] = { BondDistance::Near, 
+                BondDistance::Middle, BondDistance::Far }; 
+            auto bond_distance_from_index = [&](int index)->BondDistance {return bond_distance_items[index];};
+            auto bond_distance_to_index = [&](BondDistance type)->int {
+                 for (int i=0;i<IM_ARRAYSIZE(atom_type_items);++i) {
+                    if (bond_distance_items[i]==type) return i;
+                 }
+                 return 0;
+            };
+            
+            
             // new rule
             ImGui::PushItemWidth(50);
             static int atom_type1 = 0;
@@ -380,9 +380,6 @@ private:
             ImGui::SameLine();         
             static int before_state_1 = 0;
             ImGui::Combo("##before1", &before_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
-            ImGui::SameLine();
-            static bool bonded_before = false;
-            ImGui::Checkbox("##bonded_before", &bonded_before);
             ImGui::SameLine();
             static int atom_type2 = 0;
             ImGui::Combo("##type2", &atom_type2, atom_type_items, IM_ARRAYSIZE(atom_type_items));    
@@ -392,21 +389,14 @@ private:
             ImGui::SameLine(); 
             ImGui::Text("->");
             ImGui::SameLine();  
-            static int after_state_1 = 0;
-            ImGui::Combo("##after1", &after_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
-            ImGui::SameLine();
-            static bool bonded_after = true;
-            ImGui::Checkbox("##bonded_after", &bonded_after);
-            ImGui::SameLine();
-            static int after_state_2 = 0;
-            ImGui::Combo("##after2", &after_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+            static int distance_index = 0;
+            ImGui::Combo("##distance", &distance_index, bond_distance_names, IM_ARRAYSIZE(bond_distance_names));
             ImGui::PopItemWidth();
 
-
             if (ImGui::Button("Add Rule")) {
-                bond_rules.push_back(std::make_unique<BondRule>(atom_type_from_index(atom_type1), before_state_1, bonded_before,
+                bond_rules.push_back(std::make_unique<BondRule>(atom_type_from_index(atom_type1), before_state_1,
                                                        atom_type_from_index(atom_type2), before_state_2, 
-                                                       after_state_1, bonded_after, after_state_2));
+                                                       bond_distance_from_index(distance_index)));
             }
 
             for (auto& rule: bond_rules) {
@@ -419,10 +409,8 @@ private:
                     atom_type2 = atom_type_to_index(rule->atom_type2);
                     before_state_1 = rule->before_state1;
                     before_state_2 = rule->before_state2;
-                    after_state_1 = rule->after_state1;
-                    after_state_2 = rule->after_state2;
-                    bonded_before = rule->before_bonded;
-                    bonded_after = rule->after_bonded;
+                    distance_index = bond_distance_to_index(rule->bond_distance);
+                   
                     bond_rules.erase(std::remove(bond_rules.begin(), bond_rules.end(), rule), bond_rules.end());
                     ImGui::PopID();
                     ImGui::PopItemWidth();
@@ -439,7 +427,7 @@ private:
                 ImGui::SliderFloat("Friction", &params.friction, 0.0f, 1.0f);
                 ImGui::SliderFloat("Collision Elasticity", &params.collision_elasticity, 0.0f, 1.0f);
                 //ImGui::SliderFloat("Atom Radius", &params.atom_radius, 1.0f, 100.0f);
-                ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 100.0f);
+                // ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 100.0f);
                 ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 100.0f);
                 ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 100.0f);
                 ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);

@@ -4,15 +4,17 @@
 #include <SDL2/SDL.h>
 
 #include "atom.h"
+#include "physicsparameters.h"
 
 struct Bond {
 
     std::shared_ptr<Atom> atom1;
     std::shared_ptr<Atom> atom2;
     const PhysicsParameters& params;
+    BondDistance bonding_distance;
     
-    Bond(const PhysicsParameters& params,std::shared_ptr<Atom> atom1, std::shared_ptr<Atom> atom2)
-        :params(params),atom1(atom1),atom2(atom2)
+    Bond(const PhysicsParameters& params,std::shared_ptr<Atom> atom1, std::shared_ptr<Atom> atom2, BondDistance distance)
+        :params(params),atom1(atom1),atom2(atom2),bonding_distance(distance)
     {
         atom1->num_bonds+=1;
         atom2->num_bonds+=1;
@@ -27,7 +29,7 @@ struct Bond {
         float dx = atom2->x - atom1->x;
         float dy = atom2->y - atom1->y;
         float dist = sqrt(dx*dx + dy*dy);
-        float force = (dist-params.bonding_distance) * params.bonding_strength;
+        float force = (dist-params.bonding_distance(bonding_distance)) * params.bonding_strength;
         atom1->vx += force * dx / dist;
         atom1->vy += force * dy / dist;
         atom2->vx -= force * dx / dist;
