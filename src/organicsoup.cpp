@@ -21,7 +21,7 @@
 #include "atom.h"
 #include "atomrenderer.h"
 #include "bond.h"
-#include "rule.h"
+#include "bondrule.h"
 #include "spacemap.h"
 #include "physicsparameters.h"
 
@@ -167,7 +167,7 @@ private:
             debug_num_pairs_tested++;
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
-            for (auto& rule: rules) {
+            for (auto& rule: bond_rules) {
                 debug_num_rules_tested ++;
                 if (match_rule(*rule, atom1, atom2)) {
                     apply_rule(*rule, atom1, atom2);
@@ -263,13 +263,13 @@ private:
 
     }
 
-    bool match_rule(const Rule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2)
+    bool match_rule(const BondRule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2)
     {
         bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
         return rule.match(atom1, atom2, bonded);
     };
     
-    void apply_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
+    void apply_rule(const BondRule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
     {
         atom1->state = rule.after_state1;
         atom2->state = rule.after_state2;
@@ -361,7 +361,7 @@ private:
             }
             ImGui::PopItemWidth(); 
 
-            ImGui::SeparatorText("Rules");
+            ImGui::SeparatorText("Bonding Rules");
 
             static const char* atom_type_items[] = { "a","b","c","d","e","f", "X", "Y"};
             static const char* atom_state_items[] = { "0","1","2","3","4","5","6","7","8","9"}; 
@@ -404,12 +404,12 @@ private:
 
 
             if (ImGui::Button("Add Rule")) {
-                rules.push_back(std::make_unique<Rule>(atom_type_from_index(atom_type1), before_state_1, bonded_before,
+                bond_rules.push_back(std::make_unique<BondRule>(atom_type_from_index(atom_type1), before_state_1, bonded_before,
                                                        atom_type_from_index(atom_type2), before_state_2, 
                                                        after_state_1, bonded_after, after_state_2));
             }
 
-            for (auto& rule: rules) {
+            for (auto& rule: bond_rules) {
                 ImGui::PushID(rule.get());
                 ImGui::PushItemWidth(50);
 
@@ -423,7 +423,7 @@ private:
                     after_state_2 = rule->after_state2;
                     bonded_before = rule->before_bonded;
                     bonded_after = rule->after_bonded;
-                    rules.erase(std::remove(rules.begin(), rules.end(), rule), rules.end());
+                    bond_rules.erase(std::remove(bond_rules.begin(), bond_rules.end(), rule), bond_rules.end());
                     ImGui::PopID();
                     ImGui::PopItemWidth();
                     break;
@@ -530,7 +530,7 @@ private:
     std::unique_ptr<AtomRenderer> atom_renderer;
     std::vector<std::shared_ptr<Atom>> atoms;
     //std::vector<std::shared_ptr<Bond>> bonds;
-    std::vector<std::unique_ptr<Rule>> rules;
+    std::vector<std::unique_ptr<BondRule>> bond_rules;
 
     // TODO: instead of this map, we could use an unordered set of bonds with a proper hash and compare for bonds...
     std::unordered_map<AtomPair,std::shared_ptr<Bond>> atompair2bond;
