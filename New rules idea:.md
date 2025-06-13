@@ -7,8 +7,8 @@ But there are two types of rules.
 ## Pairwise bonding rules:
  for any pair of atoms, a bonding strenght an distance are given. 
 
-If no rule is given for a pair, there is no bond.
-A streng of 0 also means no bond?
+If no rule is given for a pair, there is no bond. If there was a bond, it will be broken. 
+A streng of 0 also means no bond.
 
 So existance of a bond, it distance and strength are given by a function that is determined 
 for any pair of neighbouring atoms.
@@ -29,7 +29,7 @@ a0 X0 -> strong, far
 a0 X(T>=1) -> weak, outrange
 X(T) Y(S=T) -> strong, near
 
-Problem: may match more than one rule. Use first or last? Error or warning?
+Problem: a pair may match more than one rule. Use first or last? Error or warning?
 
 ## State rules:
 
@@ -55,6 +55,28 @@ Idea 2: not a list but a constraint on number of each color, like:
 (red == 0 & blue == 1 & green <= 3) || yellow == blue) -> red
 
 Problem: may match more than one rule. Use first or last? Error or warning?
+
+## Problems
+
+Something that is not naturally expessed with this is limiting the number of bonds. 
+
+```  
+Bonding rules:
+a0 a0 near
+
+State rules:
+a (a==2) a1 
+```
+
+First an a0a0 pair will be formed. 
+But the state rule will result in the bond being broken (or not even established) as soon as a a third a appraches the pair. 
+
+Maybe the current bonding rules should only create bonds, but do break. For that we need anaother rule
+
+```
+a1 a1 break
+```
+
 
 
 
