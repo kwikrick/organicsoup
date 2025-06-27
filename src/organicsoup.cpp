@@ -15,6 +15,7 @@
 #include <memory>
 #include <chrono>
 #include <unordered_map>
+#include <set>
 
 // my includes
 #include "atom.h"
@@ -23,6 +24,9 @@
 #include "rule.h"
 #include "spacemap.h"
 #include "physicsparameters.h"
+#include "charge.h"
+
+
 
 // Dear ImGui
 #include "imgui.h"
@@ -211,7 +215,7 @@ private:
         for (auto& pair: pairs) {
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
-            atom1->attract(*atom2);
+            atom1->attract(*atom2, charges);
             atom1->collide(*atom2);
         }
         
@@ -363,22 +367,7 @@ private:
             }
             ImGui::PopItemWidth(); 
 
-            ImGui::SeparatorText("Charge");
-
-            for (int atom_number = 0; atom_number<params.num_atom_types;atom_number++) {
-                char atom_type = atom_number + 'a';
-                ImGui::PushID(atom_type);
-                ImGui::PushItemWidth(100);
-                int value = params.atom_charges[atom_number];
-                ImGui::InputInt(std::format("charge {}",atom_type).c_str(), &value);
-                params.atom_charges[atom_number] = value;
-                ImGui::PopID();
-                if (atom_number != 2 && atom_number != 5) {
-                    ImGui::SameLine();
-                }
-            }
-
-            ImGui::SeparatorText("Rules");
+            ImGui::SeparatorText("Bonding Rules");
 
             static const char* atom_type_items[] = { "a","b","c","d","e","f", "X", "Y"};
             static const char* atom_state_items[] = { "0","1","2","3","4","5","6","7","8","9"}; 
@@ -394,7 +383,7 @@ private:
             ImGui::PushItemWidth(50);
             static int atom_type1 = 0;
             ImGui::Combo("##type1", &atom_type1, atom_type_items, IM_ARRAYSIZE(atom_type_items));     
-            ImGui::SameLine();         
+            ImGui::SameLine();
             static int before_state_1 = 0;
             ImGui::Combo("##before1", &before_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
             ImGui::SameLine();
@@ -450,7 +439,63 @@ private:
                 ImGui::PopItemWidth();
                 ImGui::PopID();
             }
-        
+
+            ImGui::SeparatorText("Charges");
+
+            // for (int atom_number = 0; atom_number<params.num_atom_types;atom_number++) {
+            //     char atom_type = atom_number + 'a';
+            //     ImGui::PushID(atom_type);
+            //     ImGui::PushItemWidth(100);
+            //     int value = params.atom_charges[atom_number];
+            //     ImGui::InputInt(std::format("charge {}",atom_type).c_str(), &value);
+            //     params.atom_charges[atom_number] = value;
+            //     ImGui::PopID();
+            //     if (atom_number != 2 && atom_number != 5) {
+            //         ImGui::SameLine();
+            //     }
+            // }
+
+             // new rule
+            static int charge_type_number = 0;
+            ImGui::SetNextItemWidth(50);
+            ImGui::Combo("##charge_type", &charge_type_number, atom_type_items, IM_ARRAYSIZE(atom_type_items));     
+            ImGui::SameLine();
+            char charge_type = charge_type_number + 'a';
+            static int charge_state = 0;
+            ImGui::SetNextItemWidth(50);
+            ImGui::Combo("##charge_state", &charge_state, atom_state_items, IM_ARRAYSIZE(atom_state_items));
+            ImGui::SameLine(); 
+            ImGui::Text(":");
+            ImGui::SameLine();  
+            static int charge_value = 0;
+            ImGui::SetNextItemWidth(100);
+            ImGui::InputInt("##charge_value", &charge_value);
+            
+            if (ImGui::Button("Add Charge")) {
+                auto new_charge = Charge(charge_type, charge_state, (float)charge_value);
+                if (charges.contains(new_charge)) charges.erase(new_charge);
+                charges.insert(new_charge);
+            }
+
+            int i=0;
+            for (const auto& charge: charges) {
+                ImGui::PushID(&charge);
+                ImGui::PushItemWidth(50);
+
+                // delete button
+                if (ImGui::Button("X")) {
+                    charges.erase(charge);
+                    ImGui::PopID();
+                    ImGui::PopItemWidth();
+                    break;
+                }
+                ImGui::SameLine();
+                ImGui::Text("%s",charge.to_text().c_str());                  
+                ImGui::PopItemWidth();
+                ImGui::PopID();
+            }
+
+
             if (ImGui::CollapsingHeader("Physics Parameters")) {
                 ImGui::SliderFloat("Temperature", &params.temp, 0.0f, 1.0f);
                 ImGui::SliderFloat("Friction", &params.friction, 0.0f, 1.0f);
@@ -551,6 +596,7 @@ private:
     std::vector<std::shared_ptr<Atom>> atoms;
     //std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
+    std::set<Charge> charges;
 
     // TODO: instead of this map, we could use an unordered set of bonds with a proper hash and compare for bonds...
     std::unordered_map<AtomPair,std::shared_ptr<Bond>> atompair2bond;

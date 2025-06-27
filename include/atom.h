@@ -2,6 +2,7 @@
 
 #include "util.h" 
 #include "physicsparameters.h"
+#include "charge.h"
 
 class Atom 
 {
@@ -34,9 +35,19 @@ public:
         if (y>params.space_height-params.atom_radius && vy>0) {vy=-vy; y=params.space_height-params.atom_radius+vy/2;}
     }
 
-    void attract(Atom& other) {
+    void attract(Atom& other, const std::set<Charge>& charges) {
 
         // TODO: a lot of code is in common with collide. Combine functions or pre-compute common vectors. 
+
+        auto proto_charge = Charge(type,state,0);
+        const auto found_charge = charges.find(proto_charge);
+        if (found_charge==charges.cend()) return;
+        float charge = (*found_charge).charge;
+
+        auto proto_charge2 = Charge(other.type,other.state,0);
+        const auto found_charge2 = charges.find(proto_charge2);
+        if (found_charge2==charges.cend()) return;
+        float other_charge = (*found_charge2).charge;
 
         float dx = other.x - x;
         float dy = other.y - y;
@@ -46,10 +57,6 @@ public:
             float d = sqrt(d2)+0.0001f; // avoid division by zero
             float nx = dx/d;
             float ny = dy/d;
-            int atom_number = type - 'a';
-            int other_atom_number = other.type - 'a';
-            float charge = params.atom_charges[atom_number];
-            float other_charge = params.atom_charges[other_atom_number];
             float fraction = (d-diameter) / (params.charge_distance - diameter);
             float force = charge * other_charge * (1-fraction) * params.charge_strength; 
             vx -= force * nx;

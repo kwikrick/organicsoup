@@ -22,5 +22,5 @@ struct PhysicsParameters
     int max_bonds_per_atom = 6;
 
     static constexpr int num_atom_types = 6;
-    std::array<float,num_atom_types> atom_charges;
+    //std::array<float,num_atom_types> atom_charges;
 };
