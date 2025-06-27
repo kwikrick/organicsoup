@@ -16,7 +16,6 @@
 #include <chrono>
 #include <unordered_map>
 
-
 // my includes
 #include "atom.h"
 #include "atomrenderer.h"
@@ -208,7 +207,7 @@ private:
             item.second->update();
         }
         
-        // charge
+        // attract/repulse and collide
         for (auto& pair: pairs) {
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
@@ -216,13 +215,6 @@ private:
             atom1->collide(*atom2);
         }
         
-        // collide
-        for (auto& pair: pairs) {
-            auto& atom1 = pair.first;
-            auto& atom2 = pair.second;
-            atom1->collide(*atom2);
-        }
-
         // move atoms
         for (auto& atom: atoms) {
             atom->update();
