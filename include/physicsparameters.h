@@ -15,6 +15,12 @@ struct PhysicsParameters
     float bonding_start_distance = 33.0f;   // radius to start bonding atoms
     float bonding_end_distance = 48.0f;     // radius to break bonding atoms
     float bonding_strength = 0.1f;       // strength of bonding spring between atoms
+    
+    float charge_distance = 128.0f; 
+    float charge_strength = 0.1f; 
 
     int max_bonds_per_atom = 6;
+
+    static constexpr int num_atom_types = 6;
+    std::array<float,num_atom_types> atom_charges;
 };

@@ -34,6 +34,31 @@ public:
         if (y>params.space_height-params.atom_radius && vy>0) {vy=-vy; y=params.space_height-params.atom_radius+vy/2;}
     }
 
+    void attract(Atom& other) {
+
+        // TODO: a lot of code is in common with collide. Combine functions or pre-compute common vectors. 
+
+        float dx = other.x - x;
+        float dy = other.y - y;
+        float d2 = dx*dx + dy*dy;
+        float diameter = 2* params.atom_radius;
+        if (d2 > diameter * diameter) {
+            float d = sqrt(d2)+0.0001f; // avoid division by zero
+            float nx = dx/d;
+            float ny = dy/d;
+            int atom_number = type - 'a';
+            int other_atom_number = other.type - 'a';
+            float charge = params.atom_charges[atom_number];
+            float other_charge = params.atom_charges[other_atom_number];
+            float fraction = (d-diameter) / (params.charge_distance - diameter);
+            float force = charge * other_charge * (1-fraction) * params.charge_strength; 
+            vx -= force * nx;
+            vy -= force * ny;
+            other.vx += force * nx;
+            other.vy += force * ny;
+        };
+    }
+
     bool collide(Atom& other) {
         float dx = other.x - x;
         float dy = other.y - y;

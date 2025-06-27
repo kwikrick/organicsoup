@@ -159,7 +159,9 @@ private:
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
 
-        float pair_distance = fmax(params.bonding_start_distance, params.atom_radius*2);
+        float pair_distance = params.atom_radius*2;
+        pair_distance = fmax(pair_distance, params.bonding_start_distance);
+        pair_distance = fmax(pair_distance, params.charge_distance);
         auto pairs = spacemap->get_pairs(pair_distance);
 
         // try rules 
@@ -204,6 +206,14 @@ private:
         // enfore bonds
         for (auto& item: atompair2bond) {
             item.second->update();
+        }
+        
+        // charge
+        for (auto& pair: pairs) {
+            auto& atom1 = pair.first;
+            auto& atom2 = pair.second;
+            atom1->attract(*atom2);
+            atom1->collide(*atom2);
         }
         
         // collide
@@ -361,6 +371,21 @@ private:
             }
             ImGui::PopItemWidth(); 
 
+            ImGui::SeparatorText("Charge");
+
+            for (int atom_number = 0; atom_number<params.num_atom_types;atom_number++) {
+                char atom_type = atom_number + 'a';
+                ImGui::PushID(atom_type);
+                ImGui::PushItemWidth(100);
+                int value = params.atom_charges[atom_number];
+                ImGui::InputInt(std::format("charge {}",atom_type).c_str(), &value);
+                params.atom_charges[atom_number] = value;
+                ImGui::PopID();
+                if (atom_number != 2 && atom_number != 5) {
+                    ImGui::SameLine();
+                }
+            }
+
             ImGui::SeparatorText("Rules");
 
             static const char* atom_type_items[] = { "a","b","c","d","e","f", "X", "Y"};
@@ -439,11 +464,14 @@ private:
                 ImGui::SliderFloat("Friction", &params.friction, 0.0f, 1.0f);
                 ImGui::SliderFloat("Collision Elasticity", &params.collision_elasticity, 0.0f, 1.0f);
                 //ImGui::SliderFloat("Atom Radius", &params.atom_radius, 1.0f, 100.0f);
-                ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 100.0f);
-                ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 100.0f);
-                ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 100.0f);
+                ImGui::SliderFloat("Charge Distance", &params.charge_distance, 1.0f, 128.0f);
+                ImGui::SliderFloat("Charge Strength", &params.charge_strength, 0.0f, 1.0f);
+                ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 128.0f);
+                ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 128.0f);
+                ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 128.0f);
                 ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
                 ImGui::SliderInt("Max bonds per atom", &params.max_bonds_per_atom, 0,16);
+                
             }
         
             if (ImGui::CollapsingHeader("Statistics")) {
