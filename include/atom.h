@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 
 #include "util.h" 
 #include "physicsparameters.h"
@@ -58,6 +59,8 @@ public:
             float nx = dx/d;
             float ny = dy/d;
             float fraction = (d-diameter) / (params.charge_distance - diameter);
+            if (fraction>1) fraction=1;
+            if (fraction<0) fraction=0;
             float force = charge * other_charge * (1-fraction) * params.charge_strength; 
             vx -= force * nx;
             vy -= force * ny;

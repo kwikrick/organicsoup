@@ -42,6 +42,9 @@ struct Rule
 
     bool match(const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2, bool bonded) const
     {
+        if (bonded != before_bonded) return false;
+        if (atom1->state != before_state1 || atom2->state != before_state2) return false;
+
         char match_x = 0;
         char match_y = 0;
 
@@ -79,8 +82,7 @@ struct Rule
         else {
               if (atom2->type != atom_type2) return false;
         }
-        if (atom1->state != before_state1 || atom2->state != before_state2) return false;
-        if (bonded != before_bonded) return false;
+
         return true;
     };
     

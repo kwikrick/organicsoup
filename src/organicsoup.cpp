@@ -279,7 +279,7 @@ private:
     {
         atom1->state = rule.after_state1;
         atom2->state = rule.after_state2;
-        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
+        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));      // TODO: already computed in match_rule
         if (rule.after_bonded != bonded) {
             if (rule.after_bonded) {
                 if (atom1->num_bonds >= params.max_bonds_per_atom) return;
