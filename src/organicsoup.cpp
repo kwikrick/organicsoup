@@ -169,14 +169,15 @@ private:
 
         // try rules 
         for (auto& pair: pairs) {
-            float dx = pair.second->x - pair.first->x;
-            float dy = pair.second->y - pair.first->y;
-            float dist = sqrt(dx*dx + dy*dy);
-            if (dist > params.bonding_start_distance) continue;
-            
-            debug_num_pairs_tested++;
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
+
+            float dx = atom2->x - atom1->x;
+            float dy = atom2->y - atom1->y;
+            float dist = sqrt(dx*dx + dy*dy);
+            if (dist > params.bonding_start_distance) continue;
+
+            debug_num_pairs_tested++;
             for (auto& rule: rules) {
                 debug_num_rules_tested ++;
                 if (match_rule(*rule, atom1, atom2)) {
