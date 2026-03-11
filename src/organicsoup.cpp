@@ -1,4 +1,4 @@
-// Organic Builder Clone
+// Organic Builder Derivative, a sandbox for emergent chemistry and physics simulations
 // by kwikrick
 
 // Define WEBAPP when compiling a web applicaion with Emscripten (cpp -> html+js+wasm)
@@ -50,12 +50,6 @@ public:
         imgui_setup();
 
         atom_renderer = std::make_unique<AtomRenderer>(*renderer);
-
-        // rules.push_back(std::make_unique<Rule>('a', 0, false, 'b', 0, 1, true, 0));
-        // rules.push_back(std::make_unique<Rule>('b', 0, false, 'c', 0, 1, true, 0));
-        // rules.push_back(std::make_unique<Rule>('c', 0, false, 'd', 0, 1, true, 0));
-        // rules.push_back(std::make_unique<Rule>('d', 0, false, 'e', 0, 1, true, 0));
-        // rules.push_back(std::make_unique<Rule>('e', 0, false, 'f', 0, 1, true, 0));
          
         restart();
 
@@ -369,20 +363,7 @@ private:
 
             ImGui::SeparatorText("Charges");
 
-            // for (int atom_number = 0; atom_number<params.num_atom_types;atom_number++) {
-            //     char atom_type = atom_number + 'a';
-            //     ImGui::PushID(atom_type);
-            //     ImGui::PushItemWidth(100);
-            //     int value = params.atom_charges[atom_number];
-            //     ImGui::InputInt(std::format("charge {}",atom_type).c_str(), &value);
-            //     params.atom_charges[atom_number] = value;
-            //     ImGui::PopID();
-            //     if (atom_number != 2 && atom_number != 5) {
-            //         ImGui::SameLine();
-            //     }
-            // }
-
-             // new rule
+             // new charge
             static int charge_type_number = 0;
             ImGui::SetNextItemWidth(50);
             ImGui::Combo("##charge_type", &charge_type_number, atom_type_items, IM_ARRAYSIZE(atom_type_items));     
