@@ -8,6 +8,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
+
 // C++ includes
 #include <stdlib.h>
 #include <string>
@@ -20,30 +21,15 @@
 // my includes
 #include "atom.h"
 #include "atomrenderer.h"
-#include "bond.h"
 #include "rule.h"
 #include "spacemap.h"
 #include "physicsparameters.h"
 #include "charge.h"
 
-
-
 // Dear ImGui
 #include "imgui.h"
 #include "backends/imgui_impl_sdl2.h"
 #include "backends/imgui_impl_opengl3.h"
-
-using AtomPair = std::pair<const Atom*, const Atom*>;
-template<>
-struct std::hash<AtomPair>
-{
-    std::size_t operator()(const AtomPair& pair) const noexcept
-    {
-        std::size_t h1 = (std::size_t)pair.first;
-        std::size_t h2 = (std::size_t)pair.second;
-        return h1 ^ (h2 << 1);
-    }
-};
 
 class Application {
 public:
@@ -158,73 +144,48 @@ private:
     }
                
     void update() {
-        debug_num_pairs_tested = 0;
+        debug_num_collide_pairs_tested = 0;
+        debug_num_attract_pairs_tested = 0;
         debug_num_rules_tested = 0;
         debug_num_rules_applied = 0;
 
-        float pair_distance = params.atom_radius*2;
-        pair_distance = fmax(pair_distance, params.bonding_start_distance);
-        pair_distance = fmax(pair_distance, params.charge_distance);
-        auto pairs = spacemap->get_pairs(pair_distance);
-
-        // try rules 
-        for (auto& pair: pairs) {
+        // get collide / rule pairs
+        auto collide_pairs = spacemap->get_pairs(params.atom_radius*2);
+        for (auto& pair: collide_pairs) {
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
+            if (atom1->collide(*atom2)) {
+                auto& atom1 = pair.first;
+                auto& atom2 = pair.second;
 
-            float dx = atom2->x - atom1->x;
-            float dy = atom2->y - atom1->y;
-            float dist = sqrt(dx*dx + dy*dy);
-            if (dist > params.bonding_start_distance) continue;
-
-            debug_num_pairs_tested++;
-            for (auto& rule: rules) {
-                debug_num_rules_tested ++;
-                if (match_rule(*rule, atom1, atom2)) {
-                    apply_rule(*rule, atom1, atom2);
-                    debug_num_rules_applied++;
+                float dx = atom2->x - atom1->x;
+                float dy = atom2->y - atom1->y;
+                float dist = sqrt(dx*dx + dy*dy);
                 
-                }
-                else if (match_rule(*rule, atom2, atom1)) {
-                    apply_rule(*rule, atom2, atom1);
-                    debug_num_rules_applied++;
+                debug_num_collide_pairs_tested++;
+                for (auto& rule: rules) {
+                    debug_num_rules_tested ++;
+                    if (match_rule(*rule, atom1, atom2)) {
+                        apply_rule(*rule, atom1, atom2);
+                        debug_num_rules_applied++;
+                    
+                    }
+                    else if (match_rule(*rule, atom2, atom1)) {
+                        apply_rule(*rule, atom2, atom1);
+                        debug_num_rules_applied++;
+                    }
                 }
             }
         }
 
-        using AtomPairBondPair = std::pair<const AtomPair,std::shared_ptr<Bond>>;
-        auto broken = [&](AtomPairBondPair& item) {
-            auto& bond = item.second;
-            float dx = bond->atom2->x - bond->atom1->x;
-            float dy = bond->atom2->y - bond->atom1->y;
-            float dist = sqrt(dx*dx + dy*dy);
-            return dist > params.bonding_end_distance;
-        };
-        std::vector<AtomPair> to_remove;
-        for (auto item: atompair2bond) {
-            if (broken(item)) {
-                item.second->atom1->state = 0;
-                item.second->atom2->state = 0;
-                to_remove.push_back(item.first);
-            }
-        };
-        for (auto& pair: to_remove) {
-            atompair2bond.erase(pair);
-        }
-
-        // enfore bonds
-        for (auto& item: atompair2bond) {
-            item.second->update();
-        }
-        
-        // attract/repulse and collide
-        for (auto& pair: pairs) {
+        auto attract_pairs = spacemap->get_pairs(params.charge_distance);
+        for (auto& pair: attract_pairs) {
+            debug_num_attract_pairs_tested++;
             auto& atom1 = pair.first;
             auto& atom2 = pair.second;
             atom1->attract(*atom2, charges);
-            atom1->collide(*atom2);
         }
-        
+
         // move atoms
         for (auto& atom: atoms) {
             atom->update();
@@ -269,50 +230,19 @@ private:
                 atom_renderer->draw(*atom, scale, offset_x, offset_y);
         }
 
-        for (auto& item: atompair2bond) {
-                item.second->draw(*renderer, scale, offset_x, offset_y);
-        }
-
     }
 
     bool match_rule(const Rule& rule, const std::shared_ptr<const Atom>& atom1, const std::shared_ptr<const Atom>& atom2)
     {
-        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));
-        return rule.match(atom1, atom2, bonded);
+        return rule.match(atom1, atom2);
     };
     
     void apply_rule(const Rule& rule, std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2)
     {
         atom1->state = rule.after_state1;
         atom2->state = rule.after_state2;
-        bool bonded = atompair2bond.contains(make_atom_pair(atom1.get(),atom2.get()));      // TODO: already computed in match_rule
-        if (rule.after_bonded != bonded) {
-            if (rule.after_bonded) {
-                if (atom1->num_bonds >= params.max_bonds_per_atom) return;
-                if (atom2->num_bonds >= params.max_bonds_per_atom) return;
-                add_bond(atom1, atom2);
-            } else {
-                // 
-                atompair2bond.erase(make_atom_pair(atom1.get(),atom2.get()));
-            }
-        }
     };
     
-    AtomPair make_atom_pair(const Atom* atom1, const Atom* atom2)
-    {
-        const Atom* left = (atom1<atom2)?atom1:atom2;
-        const Atom* right = (atom1<atom2)?atom2:atom1;
-        return AtomPair(left,right);
-    }
-
-    std::shared_ptr<Bond> add_bond( std::shared_ptr<Atom>& atom1, std::shared_ptr<Atom>& atom2) 
-    {
-        auto pair = make_atom_pair(atom1.get(),atom2.get());
-        auto bond = std::make_shared<Bond>(params,atom1,atom2);        
-        atompair2bond[pair]=bond;
-        return bond;
-    }
-
     void imgui_setup() {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -393,9 +323,6 @@ private:
             static int before_state_1 = 0;
             ImGui::Combo("##before1", &before_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
             ImGui::SameLine();
-            static bool bonded_before = false;
-            ImGui::Checkbox("##bonded_before", &bonded_before);
-            ImGui::SameLine();
             static int atom_type2 = 0;
             ImGui::Combo("##type2", &atom_type2, atom_type_items, IM_ARRAYSIZE(atom_type_items));    
             ImGui::SameLine();      
@@ -407,18 +334,14 @@ private:
             static int after_state_1 = 0;
             ImGui::Combo("##after1", &after_state_1, atom_state_items, IM_ARRAYSIZE(atom_state_items));
             ImGui::SameLine();
-            static bool bonded_after = true;
-            ImGui::Checkbox("##bonded_after", &bonded_after);
-            ImGui::SameLine();
             static int after_state_2 = 0;
             ImGui::Combo("##after2", &after_state_2, atom_state_items, IM_ARRAYSIZE(atom_state_items));
             ImGui::PopItemWidth();
 
 
             if (ImGui::Button("Add Rule")) {
-                rules.push_back(std::make_unique<Rule>(atom_type_from_index(atom_type1), before_state_1, bonded_before,
-                                                       atom_type_from_index(atom_type2), before_state_2, 
-                                                       after_state_1, bonded_after, after_state_2));
+                rules.push_back(std::make_unique<Rule>(atom_type_from_index(atom_type1), before_state_1,                                                       atom_type_from_index(atom_type2), before_state_2, 
+                                                       after_state_1, after_state_2));
             }
 
             for (auto& rule: rules) {
@@ -433,8 +356,6 @@ private:
                     before_state_2 = rule->before_state2;
                     after_state_1 = rule->after_state1;
                     after_state_2 = rule->after_state2;
-                    bonded_before = rule->before_bonded;
-                    bonded_after = rule->after_bonded;
                     rules.erase(std::remove(rules.begin(), rules.end(), rule), rules.end());
                     ImGui::PopID();
                     ImGui::PopItemWidth();
@@ -509,18 +430,12 @@ private:
                 //ImGui::SliderFloat("Atom Radius", &params.atom_radius, 1.0f, 100.0f);
                 ImGui::SliderFloat("Charge Distance", &params.charge_distance, 1.0f, 128.0f);
                 ImGui::SliderFloat("Charge Strength", &params.charge_strength, 0.0f, 1.0f);
-                ImGui::SliderFloat("Bonding Distance", &params.bonding_distance, 1.0f, 128.0f);
-                ImGui::SliderFloat("Bonding Start Distance", &params.bonding_start_distance, 1.0f, 128.0f);
-                ImGui::SliderFloat("Bonding End Distance", &params.bonding_end_distance, 1.0f, 128.0f);
-                ImGui::SliderFloat("Bonding Strength", &params.bonding_strength, 0.0f, 1.0f);
-                ImGui::SliderInt("Max bonds per atom", &params.max_bonds_per_atom, 0,16);
-                
             }
         
             if (ImGui::CollapsingHeader("Statistics")) {
                 ImGui::LabelText("Number of atoms", "%d", (int)atoms.size());
-                ImGui::LabelText("Number of bonds", "%d", (int)atompair2bond.size());
-                ImGui::LabelText("Number of pairs tested", "%d", debug_num_pairs_tested);
+                ImGui::LabelText("Number of collide pairs tested", "%d", debug_num_collide_pairs_tested);
+                ImGui::LabelText("Number of attract pairs tested", "%d", debug_num_attract_pairs_tested);
                 ImGui::LabelText("Number of rules tested", "%d", debug_num_rules_tested);
                 ImGui::LabelText("Number of rules applied", "%d", debug_num_rules_applied);
                 ImGui::LabelText("Update duration (ms)", "%f", debug_update_duration * 1000);
@@ -540,17 +455,6 @@ private:
 
     void resize() {
         spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);
-        std::vector<AtomPair> to_remove;
-
-        for (auto& item: atompair2bond) {
-            auto& bond = item.second;
-            if (bond->atom1->off_world() || bond->atom2->off_world()) {
-                to_remove.push_back(item.first);        
-            }
-        }
-        for (auto& pair: to_remove) {
-            atompair2bond.erase(pair);
-        }
         
         auto off_world = [&](std::shared_ptr<Atom> atom){return atom->off_world();};
             
@@ -563,8 +467,7 @@ private:
     
     void restart() {
         atoms.clear();
-        atompair2bond.clear();
-
+        
         // new spacemap for atom size and world size
         spacemap = std::make_unique<SpaceMap>(params.space_width, params.space_height, params.atom_radius*2, params.atom_radius*2);
         // create random atoms
@@ -600,18 +503,13 @@ private:
     std::unique_ptr<SpaceMap> spacemap;
     std::unique_ptr<AtomRenderer> atom_renderer;
     std::vector<std::shared_ptr<Atom>> atoms;
-    //std::vector<std::shared_ptr<Bond>> bonds;
     std::vector<std::unique_ptr<Rule>> rules;
     std::set<Charge> charges;
-
-    // TODO: instead of this map, we could use an unordered set of bonds with a proper hash and compare for bonds...
-    std::unordered_map<AtomPair,std::shared_ptr<Bond>> atompair2bond;
-
-    
    
     // Performance variables
     // TODO: rename debug->performance; or put in a struct
-    int debug_num_pairs_tested = 0;
+    int debug_num_collide_pairs_tested = 0;
+    int debug_num_attract_pairs_tested = 0;
     int debug_num_rules_tested = 0;
     int debug_num_rules_applied = 0;
     float debug_draw_duration = 0;
